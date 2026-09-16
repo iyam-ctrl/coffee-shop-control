@@ -11,11 +11,11 @@ type Product = {
   selling_price: number;
   is_active: boolean;
   category_id: string | null;
-  product_categories?: { name: string } | { name: string }[] | null;
+  product_categories?: { name: string }[] | null;
 };
 
 function categoryName(category: Product["product_categories"]) {
-  return Array.isArray(category) ? category[0]?.name : category?.name;
+  return category?.[0]?.name;
 }
 
 export default async function ProductsPage() {
@@ -47,7 +47,7 @@ export default async function ProductsPage() {
     selling_price: Number(product.selling_price),
     is_active: product.is_active,
     category_id: product.category_id,
-    product_categories: product.product_categories as Product["product_categories"],
+    product_categories: product.product_categories,
   }));
 
   return (
