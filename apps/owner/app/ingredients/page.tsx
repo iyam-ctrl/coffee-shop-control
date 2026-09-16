@@ -16,7 +16,7 @@ type Ingredient = {
   current_cost: number;
   minimum_stock: number;
   is_active: boolean;
-  units?: { name: string; symbol: string } | null;
+  units?: { name: string; symbol: string } | { name: string; symbol: string }[] | null;
 };
 
 const examples = [
@@ -34,6 +34,16 @@ const examples = [
 
 function rupiah(value: number) {
   return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(value);
+}
+
+function unitName(units: Ingredient["units"]) {
+  if (Array.isArray(units)) return units[0]?.name;
+  return units?.name;
+}
+
+function unitSymbol(units: Ingredient["units"]) {
+  if (Array.isArray(units)) return units[0]?.symbol;
+  return units?.symbol;
 }
 
 export default function IngredientsPage() {
@@ -71,7 +81,7 @@ export default function IngredientsPage() {
 
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return ingredients.filter((i) => (showInactive || i.is_active) && (!q || [i.name, i.units?.name ?? "", i.units?.symbol ?? ""].some((v) => v.toLowerCase().includes(q))));
+    return ingredients.filter((i) => (showInactive || i.is_active) && (!q || [i.name, unitName(i.units) ?? "", unitSymbol(i.units) ?? ""].some((v) => v.toLowerCase().includes(q))));
   }, [ingredients, search, showInactive]);
 
   async function addUnit(event: FormEvent) {
@@ -118,7 +128,7 @@ export default function IngredientsPage() {
   }
 
   const activeCount = ingredients.filter((i) => i.is_active).length;
-  const unitLabel = (i: Ingredient) => i.units?.symbol || i.units?.name || "—";
+  const unitLabel = (i: Ingredient) => unitSymbol(i.units) || unitName(i.units) || "—";
 
   return (
     <main style={{ minHeight: "100vh", background: "#090b0d", color: "#f5f1e8", padding: 24 }}>
