@@ -1,0 +1,8 @@
+{
+  "name": "@coffee-shop/database",
+  "private": true,
+  "version": "0.1.0",
+  "exports": {
+    "./types": "./src/types.ts"
+  }
+}
