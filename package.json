@@ -2,13 +2,11 @@
   "name": "coffee-shop-control",
   "private": true,
   "version": "0.1.0",
-  "description": "Manager and owner control system for coffee shop operations",
+  "packageManager": "pnpm@10.15.0",
   "scripts": {
-    "dev:manager": "npm run dev --workspace=@coffee-shop/manager",
-    "dev:owner": "npm run dev --workspace=@coffee-shop/owner"
-  },
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ]
+    "dev:manager": "pnpm --filter @coffee-shop/manager dev",
+    "dev:owner": "pnpm --filter @coffee-shop/owner dev",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint"
+  }
 }
