@@ -1,0 +1,13 @@
+{
+  "name": "@coffee-shop/auth",
+  "private": true,
+  "version": "0.1.0",
+  "exports": {
+    "./client": "./src/client.ts",
+    "./server": "./src/server.ts"
+  },
+  "dependencies": {
+    "@supabase/ssr": "0.7.0",
+    "@supabase/supabase-js": "2.57.4"
+  }
+}
