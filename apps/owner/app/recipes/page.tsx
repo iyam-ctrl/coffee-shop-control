@@ -9,7 +9,7 @@ const supabase = createBrowserClient(
 );
 
 type Product = { id: string; name: string; sku: string | null; selling_price: number };
-type Ingredient = { id: string; name: string; unit_id: string; current_cost: number; units?: { name: string; symbol: string } | null };
+type Ingredient = { id: string; name: string; unit_id: string; current_cost: number; units?: { name: string; symbol: string } | { name: string; symbol: string }[] | null };
 type Line = { ingredientId: string; quantity: string };
 
 type SavedRecipe = {
@@ -19,6 +19,14 @@ type SavedRecipe = {
   yield_qty: number;
   recipe_items?: { id: string; ingredient_id: string; quantity: number; ingredients?: { name: string; current_cost: number; units?: { symbol: string } | null } | null }[];
 };
+
+function unitSymbol(units: Ingredient["units"]) {
+  return Array.isArray(units) ? units[0]?.symbol : units?.symbol;
+}
+
+function unitName(units: Ingredient["units"]) {
+  return Array.isArray(units) ? units[0]?.name : units?.name;
+}
 
 function rupiah(value: number) {
   return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(value);
@@ -54,8 +62,8 @@ export default function RecipesPage() {
       supabase.from("recipes").select("id, product_id, name, yield_qty, recipe_items(id, ingredient_id, quantity, ingredients(name, current_cost, units(symbol)))").order("name"),
     ]);
     if (p.error) setError(p.error.message); else setProducts(p.data ?? []);
-    if (i.error) setError(i.error.message); else setIngredients((i.data ?? []) as Ingredient[]);
-    if (r.error) setError(r.error.message); else setRecipes((r.data ?? []) as SavedRecipe[]);
+    if (i.error) setError(i.error.message); else setIngredients((i.data ?? []) as unknown as Ingredient[]);
+    if (r.error) setError(r.error.message); else setRecipes((r.data ?? []) as unknown as SavedRecipe[]);
     setLoading(false);
   }
 
@@ -136,7 +144,7 @@ export default function RecipesPage() {
               <label style={label}>yield / recipe<input type="number" min="0.01" step="0.01" value={yieldQty} onChange={(e) => setYieldQty(e.target.value)} style={input} /></label>
             </div>
             <div style={{ marginTop: 22 }}><div style={sectionHead}><div><h3>komposisi</h3><p style={muted}>quantity mengikuti unit ingredient. contoh coffee beans = gram, milk = ml.</p></div><button onClick={addLine} style={smallPrimary}>+ tambah bahan</button></div>
-              <div style={{ display: "grid", gap: 10, marginTop: 12 }}>{lines.map((line, index) => { const ing = ingredients.find((i) => i.id === line.ingredientId); return <div key={`${index}-${line.ingredientId}`} style={lineGrid}><select value={line.ingredientId} onChange={(e) => updateLine(index, "ingredientId", e.target.value)} style={input}><option value="">pilih ingredient</option>{ingredients.map((i) => <option key={i.id} value={i.id} disabled={usedIngredientIds.includes(i.id) && i.id !== line.ingredientId}>{i.name} · {i.units?.symbol || i.units?.name || "unit"}</option>)}</select><input type="number" min="0.0001" step="0.01" value={line.quantity} onChange={(e) => updateLine(index, "quantity", e.target.value)} placeholder="quantity" style={input} /><div style={costBox}>{ing ? rupiah(Number(ing.current_cost) * Number(line.quantity || 0)) : "—"}</div><button onClick={() => removeLine(index)} style={smallButton}>×</button></div>; })}</div>
+              <div style={{ display: "grid", gap: 10, marginTop: 12 }}>{lines.map((line, index) => { const ing = ingredients.find((i) => i.id === line.ingredientId); return <div key={`${index}-${line.ingredientId}`} style={lineGrid}><select value={line.ingredientId} onChange={(e) => updateLine(index, "ingredientId", e.target.value)} style={input}><option value="">pilih ingredient</option>{ingredients.map((i) => <option key={i.id} value={i.id} disabled={usedIngredientIds.includes(i.id) && i.id !== line.ingredientId}>{i.name} · {unitSymbol(i.units) || unitName(i.units) || "unit"}</option>)}</select><input type="number" min="0.0001" step="0.01" value={line.quantity} onChange={(e) => updateLine(index, "quantity", e.target.value)} placeholder="quantity" style={input} /><div style={costBox}>{ing ? rupiah(Number(ing.current_cost) * Number(line.quantity || 0)) : "—"}</div><button onClick={() => removeLine(index)} style={smallButton}>×</button></div>; })}</div>
             </div>
             <button onClick={saveRecipe} disabled={saving || loading || !businessId} style={{ ...primary, width: "100%", marginTop: 20 }}>{saving ? "menyimpan..." : selectedRecipeId ? "simpan perubahan recipe" : "simpan recipe"}</button>
           </div>
