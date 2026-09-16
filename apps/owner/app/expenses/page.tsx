@@ -1,99 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 
-const supabase = createBrowserClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
-);
+type Expense = { id:string; store_id:string; expense_date:string; category:string; description:string; amount:number };
+type Store = { id:string; name:string };
+const getSupabase = () => createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!);
+const rupiah=(v:number)=>new Intl.NumberFormat("id-ID",{style:"currency",currency:"IDR",maximumFractionDigits:0}).format(v);
 
-const money = (n: number) => new Intl.NumberFormat("id-ID", {
-  style: "currency", currency: "IDR", maximumFractionDigits: 0
-}).format(n);
-
-type Store = { id: string; name: string };
-type Expense = { id: string; category: string; amount: number; description: string | null; spent_at: string };
-
-export default function ExpensesPage() {
-  const [stores, setStores] = useState<Store[]>([]);
-  const [storeId, setStoreId] = useState("");
-  const [rows, setRows] = useState<Expense[]>([]);
-  const [category, setCategory] = useState("OPERASIONAL");
-  const [amount, setAmount] = useState("");
-  const [description, setDescription] = useState("");
-  const [error, setError] = useState("");
-  const [ok, setOk] = useState("");
-  const [loading, setLoading] = useState(true);
-
-  async function load(selected?: string) {
-    setLoading(true); setError("");
-    const { data: claims } = await supabase.auth.getClaims();
-    const uid = claims?.claims?.sub as string | undefined;
-    if (!uid) { location.href = "/login"; return; }
-    const { data: memberships, error: membershipError } = await supabase.from("business_members")
-      .select("business_id,role").eq("user_id", uid).eq("is_active", true);
-    if (membershipError) { setError(membershipError.message); setLoading(false); return; }
-    const owner = memberships?.find(x => String(x.role).toUpperCase() === "OWNER");
-    if (!owner) { location.href = "/not-authorized"; return; }
-    const { data: s, error: storesError } = await supabase.from("stores")
-      .select("id,name").eq("business_id", owner.business_id).eq("is_active", true).order("name");
-    if (storesError) { setError(storesError.message); setLoading(false); return; }
-    setStores(s || []);
-    const id = selected || storeId || s?.[0]?.id || "";
-    setStoreId(id);
-    if (!id) { setRows([]); setLoading(false); return; }
-    const { data, error: expenseError } = await supabase.from("expenses")
-      .select("id,category,amount,description,spent_at").eq("store_id", id)
-      .order("spent_at", { ascending: false }).limit(100);
-    if (expenseError) setError(expenseError.message);
-    setRows((data || []) as Expense[]);
-    setLoading(false);
-  }
-
-  useEffect(() => { load(); }, []);
-
-  async function addExpense() {
-    setError(""); setOk("");
-    const value = Number(amount);
-    if (!storeId) return setError("pilih outlet");
-    if (!Number.isFinite(value) || value <= 0) return setError("jumlah biaya harus lebih dari 0");
-    const { data: claims } = await supabase.auth.getClaims();
-    const uid = claims?.claims?.sub as string | undefined;
-    if (!uid) return setError("session tidak ditemukan");
-    const { error: insertError } = await supabase.from("expenses").insert({
-      store_id: storeId,
-      category: category.trim().toUpperCase(),
-      amount: value,
-      description: description.trim() || null,
-      spent_at: new Date().toISOString(),
-      created_by: uid,
-    });
-    if (insertError) return setError(insertError.message);
-    setAmount(""); setDescription(""); setOk("biaya berhasil dicatat");
-    await load(storeId);
-  }
-
-  return <main style={main}><div style={{maxWidth:1000,margin:"0 auto"}}>
-    <header style={head}><div><p style={eyebrow}>OWNER CONTROL</p><h1>biaya operasional</h1><p style={muted}>catat biaya outlet agar profit bersih tidak hanya berdasarkan penjualan.</p></div><button onClick={()=>location.href="/"} style={button}>dashboard</button></header>
-    {error && <p style={err}>{error}</p>}{ok && <p style={success}>{ok}</p>}
-    <section style={card}><select disabled={loading} value={storeId} onChange={e=>{setStoreId(e.target.value);load(e.target.value)}} style={input}>{stores.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></section>
-    <section style={{...card,marginTop:16}}><p style={eyebrow}>BIAYA BARU</p><div style={grid}><input value={category} onChange={e=>setCategory(e.target.value)} placeholder="kategori" style={input}/><input type="number" min="1" value={amount} onChange={e=>setAmount(e.target.value)} placeholder="jumlah" style={input}/><input value={description} onChange={e=>setDescription(e.target.value)} placeholder="deskripsi" style={input}/></div><button onClick={addExpense} style={primary}>simpan biaya</button></section>
-    <section style={{...card,marginTop:16,overflowX:"auto"}}><p style={eyebrow}>RIWAYAT</p><table style={table}><thead><tr><th style={th}>tanggal</th><th style={th}>kategori</th><th style={th}>deskripsi</th><th style={th}>jumlah</th></tr></thead><tbody>{rows.map(r=><tr key={r.id}><td style={td}>{new Date(r.spent_at).toLocaleString("id-ID")}</td><td style={td}>{r.category}</td><td style={td}>{r.description || "-"}</td><td style={td}>{money(Number(r.amount))}</td></tr>)}{!rows.length&&!loading&&<tr><td style={td} colSpan={4}>belum ada biaya.</td></tr>}</tbody></table></section>
-  </div></main>;
+export default function ExpensesPage(){
+ const [businessId,setBusinessId]=useState(""); const [stores,setStores]=useState<Store[]>([]); const [expenses,setExpenses]=useState<Expense[]>([]); const [storeId,setStoreId]=useState(""); const [loading,setLoading]=useState(true); const [saving,setSaving]=useState(false); const [error,setError]=useState(""); const [message,setMessage]=useState(""); const [form,setForm]=useState({date:new Date().toISOString().slice(0,10),category:"operasional",description:"",amount:""});
+ async function load(){ const supabase=getSupabase(); setLoading(true); setError(""); const {data:claims}=await supabase.auth.getClaims(); const uid=claims?.claims?.sub as string|undefined; if(!uid){window.location.href="/login";return;} const {data:members,error:me}=await supabase.from("business_members").select("business_id,role").eq("user_id",uid).eq("is_active",true); const owner=members?.find(m=>String(m.role).toUpperCase()==="OWNER"); if(me||!owner){setError(me?.message||"akun ini belum memiliki akses owner.");setLoading(false);return;} setBusinessId(owner.business_id); const [s,e]=await Promise.all([supabase.from("stores").select("id,name").eq("business_id",owner.business_id).eq("is_active",true).order("name"),supabase.from("expenses").select("id,store_id,expense_date,category,description,amount").eq("business_id",owner.business_id).order("expense_date",{ascending:false}).limit(100)]); if(s.error)setError(s.error.message);else{setStores(s.data??[]);if(!storeId&&s.data?.[0])setStoreId(s.data[0].id);} if(e.error)setError(e.error.message);else setExpenses((e.data??[]) as Expense[]); setLoading(false); }
+ useEffect(()=>{load();},[]);
+ async function add(e:FormEvent){e.preventDefault();const supabase=getSupabase();setSaving(true);setError("");setMessage("");const amount=Number(form.amount);if(!storeId||!form.description.trim()||!Number.isFinite(amount)||amount<=0){setError("outlet, keterangan, dan nominal harus valid.");setSaving(false);return;}const {error:err}=await supabase.from("expenses").insert({business_id:businessId,store_id:storeId,expense_date:form.date,category:form.category,description:form.description.trim(),amount});if(err)setError(err.message);else{setMessage("pengeluaran berhasil ditambahkan.");setForm({...form,description:"",amount:""});await load();}setSaving(false);}
+ const total=expenses.reduce((a,e)=>a+Number(e.amount),0);
+ return <main style={styles.main}><div style={styles.wrap}><header style={styles.header}><div><small style={styles.gold}>OWNER · FINANCE CONTROL</small><h1>expenses</h1><p style={styles.muted}>catat biaya operasional untuk perhitungan laba bersih.</p></div><button style={styles.button} onClick={()=>window.location.href="/"}>dashboard</button></header><section style={styles.stats}><div style={styles.card}><span style={styles.muted}>total tercatat</span><b style={styles.metric}>{rupiah(total)}</b></div><div style={styles.card}><span style={styles.muted}>jumlah transaksi</span><b style={styles.metric}>{expenses.length}</b></div><div style={styles.card}><span style={styles.muted}>outlet</span><b style={styles.metric}>{stores.length}</b></div></section>{message&&<p style={styles.ok}>{message}</p>}{error&&<p style={styles.err}>{error}</p>}<div style={styles.grid}><section style={styles.card}><h2>tambah pengeluaran</h2><form onSubmit={add} style={styles.form}><select value={storeId} onChange={e=>setStoreId(e.target.value)} style={styles.input}><option value="">pilih outlet</option>{stores.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select><input type="date" value={form.date} onChange={e=>setForm({...form,date:e.target.value})} style={styles.input}/><input value={form.category} onChange={e=>setForm({...form,category:e.target.value})} placeholder="kategori" style={styles.input}/><input value={form.description} onChange={e=>setForm({...form,description:e.target.value})} placeholder="keterangan" style={styles.input}/><input type="number" min="1" value={form.amount} onChange={e=>setForm({...form,amount:e.target.value})} placeholder="nominal" style={styles.input}/><button disabled={saving||!businessId} style={styles.primary}>{saving?"menyimpan...":"simpan pengeluaran"}</button></form></section><section style={styles.card}><h2>riwayat pengeluaran</h2>{loading?<p style={styles.muted}>memuat...</p>:expenses.length===0?<p style={styles.muted}>belum ada pengeluaran.</p>:<div style={{overflowX:"auto"}}><table style={styles.table}><thead><tr><th>tanggal</th><th>outlet</th><th>kategori</th><th>keterangan</th><th>nominal</th></tr></thead><tbody>{expenses.map(e=><tr key={e.id}><td>{e.expense_date}</td><td>{stores.find(s=>s.id===e.store_id)?.name||"—"}</td><td>{e.category}</td><td>{e.description}</td><td>{rupiah(Number(e.amount))}</td></tr>)}</tbody></table></div>}</section></div></div></main>;
 }
-
-const main={minHeight:"100vh",background:"#090b0d",color:"#f5f1e8",padding:24};
-const head={display:"flex",justifyContent:"space-between",alignItems:"center",gap:18,marginBottom:22,flexWrap:"wrap"} as const;
-const eyebrow={color:"#c5a66b",letterSpacing:2,fontSize:11} as const;
-const muted={color:"#9299a3",fontSize:13} as const;
-const card={padding:20,borderRadius:18,background:"#14171b",border:"1px solid #292e34"} as const;
-const grid={display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:10,margin:"14px 0"} as const;
-const input={padding:12,borderRadius:10,border:"1px solid #353b43",background:"#0e1013",color:"#f5f1e8",width:"100%"} as const;
-const button={...input,width:"auto",cursor:"pointer"} as const;
-const primary={padding:13,border:0,borderRadius:10,background:"#c5a66b",color:"#111",fontWeight:800,cursor:"pointer",width:"100%"} as const;
-const table={width:"100%",borderCollapse:"collapse",marginTop:14} as const;
-const th={textAlign:"left",padding:"11px 9px",borderBottom:"1px solid #30353b",color:"#9299a3",fontSize:12} as const;
-const td={padding:"12px 9px",borderBottom:"1px solid #24282d",fontSize:13} as const;
-const err={padding:12,borderRadius:10,background:"#1d1515",color:"#ff8d8d",marginBottom:15};
-const success={padding:12,borderRadius:10,background:"#151d18",color:"#9fe2b0",marginBottom:15};
+const styles={main:{minHeight:"100vh",background:"#090b0d",color:"#f5f1e8",padding:24},wrap:{maxWidth:1220,margin:"0 auto"},header:{display:"flex",justifyContent:"space-between",alignItems:"center",gap:16,marginBottom:24,flexWrap:"wrap" as const},gold:{color:"#c5a66b",letterSpacing:2,fontSize:11},muted:{color:"#9299a3",fontSize:13},card:{padding:20,borderRadius:18,background:"#14171b",border:"1px solid #292e34",marginBottom:18},stats:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(190px,1fr))",gap:14},metric:{display:"block",fontSize:28,marginTop:8},grid:{display:"grid",gridTemplateColumns:"minmax(290px,380px) minmax(0,1fr)",gap:18,alignItems:"start"},form:{display:"grid",gap:10,marginTop:14},input:{width:"100%",padding:"12px 13px",borderRadius:10,border:"1px solid #353b43",background:"#0d0f12",color:"#f5f1e8"},button:{padding:"11px 16px",borderRadius:10,border:"1px solid #353b43",background:"#15181c",color:"#f5f1e8"},primary:{padding:"12px 16px",border:0,borderRadius:10,background:"#c5a66b",color:"#111",fontWeight:700},table:{width:"100%",borderCollapse:"collapse" as const,marginTop:14},ok:{color:"#9fe2b0"},err:{color:"#ff8d8d"}} as const;
