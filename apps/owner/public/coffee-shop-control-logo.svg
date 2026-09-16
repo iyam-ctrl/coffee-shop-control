@@ -1,0 +1,14 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect width="512" height="512" rx="128" fill="#0A0C0F"/>
+<rect x="18" y="18" width="476" height="476" rx="112" stroke="#C5A66B" stroke-width="3" opacity="0.65"/>
+<path d="M153 198H359V302C359 359.438 312.438 406 255 406C197.562 406 151 359.438 151 302V200C151 198.895 151.895 198 153 198Z" fill="#14171B" stroke="#C5A66B" stroke-width="12"/>
+<path d="M359 226H380C407.614 226 430 248.386 430 276C430 303.614 407.614 326 380 326H359" stroke="#C5A66B" stroke-width="12"/>
+<path d="M194 154C194 136 207 120 225 112" stroke="#C5A66B" stroke-width="10" stroke-linecap="round"/>
+<path d="M256 154C256 136 269 120 287 112" stroke="#C5A66B" stroke-width="10" stroke-linecap="round"/>
+<path d="M318 154C318 136 331 120 349 112" stroke="#C5A66B" stroke-width="10" stroke-linecap="round"/>
+<path d="M183 254H327" stroke="#C5A66B" stroke-width="8" stroke-linecap="round" opacity="0.9"/>
+<circle cx="212" cy="291" r="8" fill="#C5A66B"/>
+<circle cx="256" cy="291" r="8" fill="#C5A66B"/>
+<circle cx="300" cy="291" r="8" fill="#C5A66B"/>
+<text x="256" y="458" text-anchor="middle" fill="#F5F1E8" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="700" letter-spacing="5">CSC</text>
+</svg>
