@@ -56,10 +56,16 @@ export default async function OwnerDashboard() {
         </section>
 
         <section style={{ marginTop: 22, display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))", gap: 16 }}>
+          <a href="/products" style={{ textDecoration: "none", color: "inherit" }}>
+            <article style={{ padding: 24, borderRadius: 18, background: "#15181c", border: "1px solid #c5a66b", cursor: "pointer" }}>
+              <p style={{ color: "#c5a66b", fontSize: 12, letterSpacing: 1.5 }}>MASTER DATA</p>
+              <h2 style={{ margin: "8px 0" }}>produk & menu →</h2>
+              <p style={{ color: "#9299a3", lineHeight: 1.6 }}>tambah, nonaktifkan, cari produk, kelola kategori, dan isi contoh menu.</p>
+            </article>
+          </a>
           {[
             ["keuangan", "omzet, HPP, laba, biaya, kas & setoran"],
             ["inventory", "stok, pembelian, waste, opname & variance"],
-            ["produk", "menu, recipe, harga jual & performa produk"],
             ["kontrol", "aktivitas manager, audit log & alert"],
           ].map(([title, text]) => (
             <article key={title} style={{ padding: 24, borderRadius: 18, background: "#15181c", border: "1px solid #292e34" }}>
