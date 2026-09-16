@@ -23,32 +23,40 @@ export default function ShiftPage() {
   const [closing, setClosing] = useState("");
   const [error, setError] = useState("");
   const [ok, setOk] = useState("");
+  const [loading, setLoading] = useState(true);
 
-  async function load() {
+  async function load(selectedStoreId?: string) {
     setError("");
+    setLoading(true);
     const { data: claims } = await supabase.auth.getClaims();
     const uid = claims?.claims?.sub as string | undefined;
     if (!uid) { location.href = "/login"; return; }
 
-    const { data: memberships } = await supabase
+    const { data: memberships, error: membershipError } = await supabase
       .from("business_members")
       .select("business_id,role")
       .eq("user_id", uid).eq("is_active", true);
+    if (membershipError) { setError(membershipError.message); setLoading(false); return; }
+
     const membership = memberships?.find((m) => ["OWNER", "MANAGER", "STAFF"].includes(String(m.role).toUpperCase()));
-    if (!membership) { setError("akun tidak memiliki akses operasional"); return; }
+    if (!membership) { setError("akun tidak memiliki akses operasional"); setLoading(false); return; }
 
-    const { data: s } = await supabase.from("stores")
+    const { data: s, error: storesError } = await supabase.from("stores")
       .select("id,name").eq("business_id", membership.business_id).eq("is_active", true).order("name");
-    setStores(s || []);
-    const id = storeId || s?.[0]?.id || "";
-    setStoreId(id);
-    if (!id) return;
+    if (storesError) { setError(storesError.message); setLoading(false); return; }
 
-    const { data: sh } = await supabase.from("shifts")
+    setStores(s || []);
+    const id = selectedStoreId || storeId || s?.[0]?.id || "";
+    setStoreId(id);
+    if (!id) { setShift(null); setLoading(false); return; }
+
+    const { data: sh, error: shiftError } = await supabase.from("shifts")
       .select("id,store_id,opened_at,opening_cash,status,closing_cash")
-      .eq("store_id", id).eq("user_id", uid).eq("status", "OPEN")
+      .eq("store_id", id).eq("status", "OPEN")
       .order("opened_at", { ascending: false }).limit(1).maybeSingle();
+    if (shiftError) setError(shiftError.message);
     setShift(sh as Shift | null);
+    setLoading(false);
   }
 
   useEffect(() => { load(); }, []);
@@ -56,27 +64,43 @@ export default function ShiftPage() {
   async function openShift() {
     setError(""); setOk("");
     if (!storeId) return setError("pilih outlet");
-    const { data: claims } = await supabase.auth.getClaims();
-    const uid = claims?.claims?.sub as string | undefined;
-    if (!uid) return setError("sesi login tidak ditemukan");
-    const { data: existing } = await supabase.from("shifts").select("id").eq("store_id", storeId).eq("status", "OPEN").limit(1);
-    if (existing?.length) return setError("masih ada shift terbuka di outlet ini");
-    const { data, error } = await supabase.from("shifts").insert({ store_id: storeId, user_id: uid, opening_cash: Number(opening) || 0, status: "OPEN" }).select("id,store_id,opened_at,opening_cash,status,closing_cash").single();
-    if (error) setError(error.message); else { setShift(data as Shift); setOpening(""); setOk("shift berhasil dibuka"); }
+    const amount = Number(opening);
+    if (!Number.isFinite(amount) || amount < 0) return setError("modal awal harus 0 atau lebih");
+
+    const { data: shiftId, error: rpcError } = await supabase.rpc("open_shift", {
+      p_store_id: storeId,
+      p_opening_cash: amount
+    });
+    if (rpcError) return setError(rpcError.message);
+
+    setOpening("");
+    setOk("shift berhasil dibuka");
+    await load(storeId);
+    if (!shiftId) setError("shift terbuka, tetapi id shift tidak diterima");
   }
 
   async function closeShift() {
     setError(""); setOk("");
     if (!shift) return;
-    const { error } = await supabase.from("shifts").update({ closing_cash: Number(closing) || 0, closed_at: new Date().toISOString(), status: "CLOSED" }).eq("id", shift.id);
-    if (error) setError(error.message); else { setShift(null); setClosing(""); setOk("shift berhasil ditutup"); }
+    const amount = Number(closing);
+    if (!Number.isFinite(amount) || amount < 0) return setError("kas akhir harus 0 atau lebih");
+
+    const { error: rpcError } = await supabase.rpc("close_shift", {
+      p_shift_id: shift.id,
+      p_closing_cash: amount
+    });
+    if (rpcError) return setError(rpcError.message);
+
+    setClosing("");
+    setOk("shift berhasil ditutup");
+    await load(storeId);
   }
 
   return <main style={main}><div style={{maxWidth:900,margin:"0 auto"}}>
     <header style={head}><div><p style={eyebrow}>COFFEE SHOP CONTROL</p><h1>shift kerja</h1><p style={muted}>buka dan tutup shift kasir per outlet.</p></div><button onClick={()=>location.href="/"} style={button}>dashboard</button></header>
     {error && <p style={err}>{error}</p>}{ok && <p style={success}>{ok}</p>}
-    <section style={card}><select value={storeId} onChange={e=>{setStoreId(e.target.value);setTimeout(load,0)}} style={input}>{stores.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></section>
-    {!shift ? <section style={{...card,marginTop:16}}><p style={eyebrow}>SHIFT BARU</p><h2 style={{margin:"8px 0 16px"}}>buka shift</h2><input type="number" value={opening} onChange={e=>setOpening(e.target.value)} placeholder="modal awal kas" style={input}/><button onClick={openShift} style={primary}>buka shift</button></section> : <section style={{...card,marginTop:16}}><p style={eyebrow}>SHIFT AKTIF</p><h2 style={{margin:"8px 0"}}>sedang berjalan</h2><p style={muted}>dibuka {new Date(shift.opened_at).toLocaleString("id-ID")}</p><h2 style={{margin:"18px 0"}}>{money(Number(shift.opening_cash))}</h2><input type="number" value={closing} onChange={e=>setClosing(e.target.value)} placeholder="kas akhir" style={input}/><button onClick={closeShift} style={primary}>tutup shift</button></section>}
+    <section style={card}><select disabled={loading} value={storeId} onChange={e=>{setStoreId(e.target.value);load(e.target.value)}} style={input}>{stores.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></section>
+    {!loading && !shift ? <section style={{...card,marginTop:16}}><p style={eyebrow}>SHIFT BARU</p><h2 style={{margin:"8px 0 16px"}}>buka shift</h2><input type="number" min="0" value={opening} onChange={e=>setOpening(e.target.value)} placeholder="modal awal kas" style={input}/><button onClick={openShift} style={primary}>buka shift</button></section> : !loading && shift ? <section style={{...card,marginTop:16}}><p style={eyebrow}>SHIFT AKTIF</p><h2 style={{margin:"8px 0"}}>sedang berjalan</h2><p style={muted}>dibuka {new Date(shift.opened_at).toLocaleString("id-ID")}</p><h2 style={{margin:"18px 0"}}>{money(Number(shift.opening_cash))}</h2><input type="number" min="0" value={closing} onChange={e=>setClosing(e.target.value)} placeholder="kas akhir" style={input}/><button onClick={closeShift} style={primary}>tutup shift</button></section> : <section style={{...card,marginTop:16}}><p style={muted}>memuat data shift...</p></section>}
   </div></main>;
 }
 
