@@ -3,54 +3,22 @@
 import { useEffect, useMemo, useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 
-const supabase = createBrowserClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
-);
-
 type Product = { id: string; name: string; sku: string | null; selling_price: number };
 type Ingredient = { id: string; name: string; unit_id: string; current_cost: number; units?: { name: string; symbol: string } | { name: string; symbol: string }[] | null };
 type Line = { ingredientId: string; quantity: string };
+type SavedRecipe = { id: string; product_id: string; name: string; yield_qty: number; recipe_items?: { id: string; ingredient_id: string; quantity: number; ingredients?: { name: string; current_cost: number; units?: { symbol: string } | { symbol: string }[] | null } | null }[] };
 
-type SavedRecipe = {
-  id: string;
-  product_id: string;
-  name: string;
-  yield_qty: number;
-  recipe_items?: { id: string; ingredient_id: string; quantity: number; ingredients?: { name: string; current_cost: number; units?: { symbol: string } | null } | null }[];
-};
-
-function unitSymbol(units: Ingredient["units"]) {
-  return Array.isArray(units) ? units[0]?.symbol : units?.symbol;
-}
-
-function unitName(units: Ingredient["units"]) {
-  return Array.isArray(units) ? units[0]?.name : units?.name;
-}
-
-function rupiah(value: number) {
-  return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(value);
-}
+function unitSymbol(units: Ingredient["units"]) { return Array.isArray(units) ? units[0]?.symbol : units?.symbol; }
+function unitName(units: Ingredient["units"]) { return Array.isArray(units) ? units[0]?.name : units?.name; }
+function rupiah(value: number) { return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(value); }
 
 export default function RecipesPage() {
-  const [businessId, setBusinessId] = useState("");
-  const [products, setProducts] = useState<Product[]>([]);
-  const [ingredients, setIngredients] = useState<Ingredient[]>([]);
-  const [recipes, setRecipes] = useState<SavedRecipe[]>([]);
-  const [productId, setProductId] = useState("");
-  const [recipeName, setRecipeName] = useState("");
-  const [yieldQty, setYieldQty] = useState("1");
-  const [lines, setLines] = useState<Line[]>([{ ingredientId: "", quantity: "" }]);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
-  const [selectedRecipeId, setSelectedRecipeId] = useState("");
+  const [businessId, setBusinessId] = useState(""); const [products, setProducts] = useState<Product[]>([]); const [ingredients, setIngredients] = useState<Ingredient[]>([]); const [recipes, setRecipes] = useState<SavedRecipe[]>([]); const [productId, setProductId] = useState(""); const [recipeName, setRecipeName] = useState(""); const [yieldQty, setYieldQty] = useState("1"); const [lines, setLines] = useState<Line[]>([{ ingredientId: "", quantity: "" }]); const [loading, setLoading] = useState(true); const [saving, setSaving] = useState(false); const [message, setMessage] = useState(""); const [error, setError] = useState(""); const [selectedRecipeId, setSelectedRecipeId] = useState("");
 
   async function loadData() {
     setLoading(true); setError("");
-    const { data: claims } = await supabase.auth.getClaims();
-    const userId = claims?.claims?.sub as string | undefined;
+    const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!);
+    const { data: claims } = await supabase.auth.getClaims(); const userId = claims?.claims?.sub as string | undefined;
     if (!userId) { window.location.href = "/login"; return; }
     const { data: memberships, error: me } = await supabase.from("business_members").select("business_id, role").eq("user_id", userId).eq("is_active", true);
     const owner = memberships?.find((m) => String(m.role).toUpperCase() === "OWNER");
@@ -66,113 +34,28 @@ export default function RecipesPage() {
     if (r.error) setError(r.error.message); else setRecipes((r.data ?? []) as unknown as SavedRecipe[]);
     setLoading(false);
   }
-
   useEffect(() => { loadData(); }, []);
-
-  const selectedProduct = products.find((p) => p.id === productId);
-  const usedIngredientIds = lines.map((l) => l.ingredientId).filter(Boolean);
-  const hppTotal = useMemo(() => lines.reduce((sum, line) => {
-    const ingredient = ingredients.find((i) => i.id === line.ingredientId);
-    const qty = Number(line.quantity || 0);
-    return sum + (ingredient ? Number(ingredient.current_cost) * (Number.isFinite(qty) ? qty : 0) : 0);
-  }, 0), [lines, ingredients]);
-  const yieldValue = Math.max(Number(yieldQty || 1), 1);
-  const hppPerServing = hppTotal / yieldValue;
-  const margin = selectedProduct ? Number(selectedProduct.selling_price) - hppPerServing : 0;
-  const marginPct = selectedProduct && Number(selectedProduct.selling_price) > 0 ? (margin / Number(selectedProduct.selling_price)) * 100 : 0;
-
-  function resetForm() {
-    setProductId(""); setRecipeName(""); setYieldQty("1"); setLines([{ ingredientId: "", quantity: "" }]); setSelectedRecipeId("");
-  }
-
-  function loadRecipe(recipe: SavedRecipe) {
-    setSelectedRecipeId(recipe.id); setProductId(recipe.product_id); setRecipeName(recipe.name); setYieldQty(String(recipe.yield_qty || 1));
-    const next = (recipe.recipe_items ?? []).map((item) => ({ ingredientId: item.ingredient_id, quantity: String(item.quantity) }));
-    setLines(next.length ? next : [{ ingredientId: "", quantity: "" }]); setMessage(`recipe ${recipe.name} dimuat untuk diedit.`); setError("");
-  }
-
-  function updateLine(index: number, key: keyof Line, value: string) {
-    setLines((old) => old.map((line, i) => i === index ? { ...line, [key]: value } : line));
-  }
-
-  function addLine() { setLines((old) => [...old, { ingredientId: "", quantity: "" }]); }
-  function removeLine(index: number) { setLines((old) => old.length === 1 ? old : old.filter((_, i) => i !== index)); }
-
+  const selectedProduct = products.find((p) => p.id === productId); const usedIngredientIds = lines.map((l) => l.ingredientId).filter(Boolean);
+  const hppTotal = useMemo(() => lines.reduce((sum, line) => { const ingredient = ingredients.find((i) => i.id === line.ingredientId); const qty = Number(line.quantity || 0); return sum + (ingredient ? Number(ingredient.current_cost) * (Number.isFinite(qty) ? qty : 0) : 0); }, 0), [lines, ingredients]);
+  const yieldValue = Math.max(Number(yieldQty || 1), 1); const hppPerServing = hppTotal / yieldValue; const margin = selectedProduct ? Number(selectedProduct.selling_price) - hppPerServing : 0; const marginPct = selectedProduct && Number(selectedProduct.selling_price) > 0 ? (margin / Number(selectedProduct.selling_price)) * 100 : 0;
+  function resetForm() { setProductId(""); setRecipeName(""); setYieldQty("1"); setLines([{ ingredientId: "", quantity: "" }]); setSelectedRecipeId(""); }
+  function loadRecipe(recipe: SavedRecipe) { setSelectedRecipeId(recipe.id); setProductId(recipe.product_id); setRecipeName(recipe.name); setYieldQty(String(recipe.yield_qty || 1)); const next = (recipe.recipe_items ?? []).map((item) => ({ ingredientId: item.ingredient_id, quantity: String(item.quantity) })); setLines(next.length ? next : [{ ingredientId: "", quantity: "" }]); setMessage(`recipe ${recipe.name} dimuat untuk diedit.`); setError(""); }
+  function updateLine(index: number, key: keyof Line, value: string) { setLines((old) => old.map((line, i) => i === index ? { ...line, [key]: value } : line)); }
+  function addLine() { setLines((old) => [...old, { ingredientId: "", quantity: "" }]); } function removeLine(index: number) { setLines((old) => old.length === 1 ? old : old.filter((_, i) => i !== index)); }
   async function saveRecipe() {
     setSaving(true); setError(""); setMessage("");
-    if (!productId || !recipeName.trim()) { setError("pilih produk dan isi nama recipe."); setSaving(false); return; }
-    const y = Number(yieldQty);
-    if (!Number.isFinite(y) || y <= 0) { setError("yield harus lebih besar dari 0."); setSaving(false); return; }
-    const cleaned = lines.filter((l) => l.ingredientId).map((l) => ({ ingredient_id: l.ingredientId, quantity: Number(l.quantity) }));
-    if (!cleaned.length || cleaned.some((l) => !Number.isFinite(l.quantity) || l.quantity <= 0)) { setError("setiap bahan harus punya quantity lebih dari 0."); setSaving(false); return; }
-    if (new Set(cleaned.map((l) => l.ingredient_id)).size !== cleaned.length) { setError("satu bahan tidak boleh muncul dua kali dalam recipe."); setSaving(false); return; }
-
+    const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!);
+    if (!productId || !recipeName.trim()) { setError("pilih produk dan isi nama recipe."); setSaving(false); return; } const y = Number(yieldQty); if (!Number.isFinite(y) || y <= 0) { setError("yield harus lebih besar dari 0."); setSaving(false); return; }
+    const cleaned = lines.filter((l) => l.ingredientId).map((l) => ({ ingredient_id: l.ingredientId, quantity: Number(l.quantity) })); if (!cleaned.length || cleaned.some((l) => !Number.isFinite(l.quantity) || l.quantity <= 0)) { setError("setiap bahan harus punya quantity lebih dari 0."); setSaving(false); return; } if (new Set(cleaned.map((l) => l.ingredient_id)).size !== cleaned.length) { setError("satu bahan tidak boleh muncul dua kali dalam recipe."); setSaving(false); return; }
     let recipeId = selectedRecipeId;
-    if (recipeId) {
-      const { error: updateError } = await supabase.from("recipes").update({ product_id: productId, name: recipeName.trim(), yield_qty: y, updated_at: new Date().toISOString() }).eq("id", recipeId);
-      if (updateError) { setError(updateError.message); setSaving(false); return; }
-      const { error: deleteError } = await supabase.from("recipe_items").delete().eq("recipe_id", recipeId);
-      if (deleteError) { setError(deleteError.message); setSaving(false); return; }
-    } else {
-      const { data, error: insertError } = await supabase.from("recipes").insert({ product_id: productId, name: recipeName.trim(), yield_qty: y }).select("id").single();
-      if (insertError || !data) { setError(insertError?.message || "recipe gagal dibuat."); setSaving(false); return; }
-      recipeId = data.id;
-    }
-
-    const { error: itemsError } = await supabase.from("recipe_items").insert(cleaned.map((line) => ({ recipe_id: recipeId, ingredient_id: line.ingredient_id, quantity: line.quantity })));
-    if (itemsError) { setError(itemsError.message); setSaving(false); return; }
+    if (recipeId) { const { error: updateError } = await supabase.from("recipes").update({ product_id: productId, name: recipeName.trim(), yield_qty: y, updated_at: new Date().toISOString() }).eq("id", recipeId); if (updateError) { setError(updateError.message); setSaving(false); return; } const { error: deleteError } = await supabase.from("recipe_items").delete().eq("recipe_id", recipeId); if (deleteError) { setError(deleteError.message); setSaving(false); return; } }
+    else { const { data, error: insertError } = await supabase.from("recipes").insert({ product_id: productId, name: recipeName.trim(), yield_qty: y }).select("id").single(); if (insertError || !data) { setError(insertError?.message || "recipe gagal dibuat."); setSaving(false); return; } recipeId = data.id; }
+    const { error: itemsError } = await supabase.from("recipe_items").insert(cleaned.map((line) => ({ recipe_id: recipeId, ingredient_id: line.ingredient_id, quantity: line.quantity }))); if (itemsError) { setError(itemsError.message); setSaving(false); return; }
     setMessage(selectedRecipeId ? "recipe berhasil diperbarui." : "recipe berhasil dibuat."); await loadData(); setSaving(false);
   }
-
-  async function deleteRecipe(recipe: SavedRecipe) {
-    if (!window.confirm(`hapus recipe ${recipe.name}?`)) return;
-    const { error: e } = await supabase.from("recipes").delete().eq("id", recipe.id);
-    if (e) setError(e.message); else { setMessage("recipe dihapus."); if (selectedRecipeId === recipe.id) resetForm(); await loadData(); }
-  }
-
-  return (
-    <main style={{ minHeight: "100vh", background: "#090b0d", color: "#f5f1e8", padding: 24 }}>
-      <div style={{ maxWidth: 1250, margin: "0 auto" }}>
-        <header style={header}><div style={{ display: "flex", alignItems: "center", gap: 14 }}><img src="/coffee-shop-control-logo.svg" width="54" height="54" alt="Coffee Shop Control" style={{ borderRadius: 14 }} /><div><p style={goldLabel}>MASTER DATA · COST CONTROL</p><h1 style={{ margin: "5px 0" }}>recipe builder</h1><p style={muted}>hubungkan produk → ingredients → HPP → margin.</p></div></div><div style={{ display: "flex", gap: 8 }}><button onClick={() => window.location.href = "/ingredients"} style={button}>ingredients</button><button onClick={() => window.location.href = "/"} style={button}>dashboard</button></div></header>
-        {message && <p style={{ ...notice, color: "#9fe2b0" }}>{message}</p>}{error && <p style={{ ...notice, color: "#ff8d8d" }}>{error}</p>}
-        <section style={workspace}>
-          <div style={card}>
-            <div style={sectionHead}><div><h2>{selectedRecipeId ? "edit recipe" : "buat recipe"}</h2><p style={muted}>1 recipe mewakili komposisi untuk produk terpilih.</p></div>{selectedRecipeId && <button onClick={resetForm} style={smallButton}>batal edit</button>}</div>
-            <div style={grid2}>
-              <label style={label}>produk<select value={productId} onChange={(e) => { setProductId(e.target.value); const p = products.find((x) => x.id === e.target.value); if (p && !recipeName) setRecipeName(`${p.name} Recipe`); }} style={input}><option value="">pilih produk aktif</option>{products.map((p) => <option key={p.id} value={p.id}>{p.name}{p.sku ? ` · ${p.sku}` : ""}</option>)}</select></label>
-              <label style={label}>nama recipe<input value={recipeName} onChange={(e) => setRecipeName(e.target.value)} placeholder="contoh: Cafe Latte Standard" style={input} /></label>
-              <label style={label}>yield / recipe<input type="number" min="0.01" step="0.01" value={yieldQty} onChange={(e) => setYieldQty(e.target.value)} style={input} /></label>
-            </div>
-            <div style={{ marginTop: 22 }}><div style={sectionHead}><div><h3>komposisi</h3><p style={muted}>quantity mengikuti unit ingredient. contoh coffee beans = gram, milk = ml.</p></div><button onClick={addLine} style={smallPrimary}>+ tambah bahan</button></div>
-              <div style={{ display: "grid", gap: 10, marginTop: 12 }}>{lines.map((line, index) => { const ing = ingredients.find((i) => i.id === line.ingredientId); return <div key={`${index}-${line.ingredientId}`} style={lineGrid}><select value={line.ingredientId} onChange={(e) => updateLine(index, "ingredientId", e.target.value)} style={input}><option value="">pilih ingredient</option>{ingredients.map((i) => <option key={i.id} value={i.id} disabled={usedIngredientIds.includes(i.id) && i.id !== line.ingredientId}>{i.name} · {unitSymbol(i.units) || unitName(i.units) || "unit"}</option>)}</select><input type="number" min="0.0001" step="0.01" value={line.quantity} onChange={(e) => updateLine(index, "quantity", e.target.value)} placeholder="quantity" style={input} /><div style={costBox}>{ing ? rupiah(Number(ing.current_cost) * Number(line.quantity || 0)) : "—"}</div><button onClick={() => removeLine(index)} style={smallButton}>×</button></div>; })}</div>
-            </div>
-            <button onClick={saveRecipe} disabled={saving || loading || !businessId} style={{ ...primary, width: "100%", marginTop: 20 }}>{saving ? "menyimpan..." : selectedRecipeId ? "simpan perubahan recipe" : "simpan recipe"}</button>
-          </div>
-          <aside style={{ display: "grid", gap: 16 }}>
-            <section style={card}><p style={goldLabel}>COST PREVIEW</p><h2 style={{ fontSize: 30, margin: "8px 0" }}>{rupiah(hppPerServing)}</h2><p style={muted}>estimasi HPP per {yieldValue === 1 ? "1 porsi" : `porsi dari yield ${yieldValue}`}</p><div style={metricRow}><span>total bahan</span><b>{rupiah(hppTotal)}</b></div><div style={metricRow}><span>harga jual</span><b>{selectedProduct ? rupiah(Number(selectedProduct.selling_price)) : "—"}</b></div><div style={metricRow}><span>gross margin / porsi</span><b style={{ color: margin >= 0 ? "#9fe2b0" : "#ff8d8d" }}>{selectedProduct ? rupiah(margin) : "—"}</b></div><div style={metricRow}><span>margin %</span><b style={{ color: marginPct >= 0 ? "#9fe2b0" : "#ff8d8d" }}>{selectedProduct ? `${marginPct.toFixed(1)}%` : "—"}</b></div></section>
-            <section style={card}><div style={sectionHead}><div><h2>recipe tersimpan</h2><p style={muted}>{recipes.length} recipe</p></div></div>{loading ? <p style={muted}>memuat...</p> : recipes.length === 0 ? <div style={empty}>belum ada recipe. buat recipe pertama di sebelah kiri.</div> : <div style={{ display: "grid", gap: 9, marginTop: 12 }}>{recipes.map((r) => { const product = products.find((p) => p.id === r.product_id); const cost = (r.recipe_items ?? []).reduce((s, item) => s + Number(item.quantity) * Number(item.ingredients?.current_cost ?? 0), 0) / Math.max(Number(r.yield_qty), 1); return <div key={r.id} style={{ padding: 12, borderRadius: 12, background: "#0e1013", border: "1px solid #292e34" }}><b>{r.name}</b><p style={{ ...muted, marginTop: 4 }}>{product?.name || "produk"} · HPP {rupiah(cost)}</p><div style={{ display: "flex", gap: 7, marginTop: 9 }}><button onClick={() => loadRecipe(r)} style={smallButton}>edit</button><button onClick={() => deleteRecipe(r)} style={smallButton}>hapus</button></div></div>; })}</div>}</section>
-          </aside>
-        </section>
-      </div>
-    </main>
-  );
+  async function deleteRecipe(recipe: SavedRecipe) { if (!window.confirm(`hapus recipe ${recipe.name}?`)) return; const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!); const { error: e } = await supabase.from("recipes").delete().eq("id", recipe.id); if (e) setError(e.message); else { setMessage("recipe dihapus."); if (selectedRecipeId === recipe.id) resetForm(); await loadData(); } }
+  return <main style={{ minHeight: "100vh", background: "#090b0d", color: "#f5f1e8", padding: 24 }}><div style={{ maxWidth: 1250, margin: "0 auto" }}><header style={header}><div style={{ display: "flex", alignItems: "center", gap: 14 }}><img src="/coffee-shop-control-logo.svg" width="54" height="54" alt="Coffee Shop Control" style={{ borderRadius: 14 }} /><div><p style={goldLabel}>MASTER DATA · COST CONTROL</p><h1 style={{ margin: "5px 0" }}>recipe builder</h1><p style={muted}>hubungkan produk → ingredients → HPP → margin.</p></div></div><div style={{ display: "flex", gap: 8 }}><button onClick={() => window.location.href = "/ingredients"} style={button}>ingredients</button><button onClick={() => window.location.href = "/"} style={button}>dashboard</button></div></header>{message && <p style={{ ...notice, color: "#9fe2b0" }}>{message}</p>}{error && <p style={{ ...notice, color: "#ff8d8d" }}>{error}</p>}<section style={workspace}><div style={card}><div style={sectionHead}><div><h2>{selectedRecipeId ? "edit recipe" : "buat recipe"}</h2><p style={muted}>1 recipe mewakili komposisi untuk produk terpilih.</p></div>{selectedRecipeId && <button onClick={resetForm} style={smallButton}>batal edit</button>}</div><div style={grid2}><label style={label}>produk<select value={productId} onChange={(e) => { setProductId(e.target.value); const p = products.find((x) => x.id === e.target.value); if (p && !recipeName) setRecipeName(`${p.name} Recipe`); }} style={input}><option value="">pilih produk aktif</option>{products.map((p) => <option key={p.id} value={p.id}>{p.name}{p.sku ? ` · ${p.sku}` : ""}</option>)}</select></label><label style={label}>nama recipe<input value={recipeName} onChange={(e) => setRecipeName(e.target.value)} placeholder="contoh: Cafe Latte Standard" style={input} /></label><label style={label}>yield / recipe<input type="number" min="0.01" step="0.01" value={yieldQty} onChange={(e) => setYieldQty(e.target.value)} style={input} /></label></div><div style={{ marginTop: 22 }}><div style={sectionHead}><div><h3>komposisi</h3><p style={muted}>quantity mengikuti unit ingredient. contoh coffee beans = gram, milk = ml.</p></div><button onClick={addLine} style={smallPrimary}>+ tambah bahan</button></div><div style={{ display: "grid", gap: 10, marginTop: 12 }}>{lines.map((line, index) => { const ing = ingredients.find((i) => i.id === line.ingredientId); return <div key={`${index}-${line.ingredientId}`} style={lineGrid}><select value={line.ingredientId} onChange={(e) => updateLine(index, "ingredientId", e.target.value)} style={input}><option value="">pilih ingredient</option>{ingredients.map((i) => <option key={i.id} value={i.id} disabled={usedIngredientIds.includes(i.id) && i.id !== line.ingredientId}>{i.name} · {unitSymbol(i.units) || unitName(i.units) || "unit"}</option>)}</select><input type="number" min="0.0001" step="0.01" value={line.quantity} onChange={(e) => updateLine(index, "quantity", e.target.value)} placeholder="quantity" style={input} /><div style={costBox}>{ing ? rupiah(Number(ing.current_cost) * Number(line.quantity || 0)) : "—"}</div><button onClick={() => removeLine(index)} style={smallButton}>×</button></div>; })}</div></div><button onClick={saveRecipe} disabled={saving || loading || !businessId} style={{ ...primary, width: "100%", marginTop: 20 }}>{saving ? "menyimpan..." : selectedRecipeId ? "simpan perubahan recipe" : "simpan recipe"}</button></div><aside style={{ display: "grid", gap: 16 }}><section style={card}><p style={goldLabel}>COST PREVIEW</p><h2 style={{ fontSize: 30, margin: "8px 0" }}>{rupiah(hppPerServing)}</h2><p style={muted}>estimasi HPP per {yieldValue === 1 ? "1 porsi" : `porsi dari yield ${yieldValue}`}</p><div style={metricRow}><span>total bahan</span><b>{rupiah(hppTotal)}</b></div><div style={metricRow}><span>harga jual</span><b>{selectedProduct ? rupiah(Number(selectedProduct.selling_price)) : "—"}</b></div><div style={metricRow}><span>gross margin / porsi</span><b style={{ color: margin >= 0 ? "#9fe2b0" : "#ff8d8d" }}>{selectedProduct ? rupiah(margin) : "—"}</b></div><div style={metricRow}><span>margin %</span><b style={{ color: marginPct >= 0 ? "#9fe2b0" : "#ff8d8d" }}>{selectedProduct ? `${marginPct.toFixed(1)}%` : "—"}</b></div></section><section style={card}><div style={sectionHead}><div><h2>recipe tersimpan</h2><p style={muted}>{recipes.length} recipe</p></div></div>{loading ? <p style={muted}>memuat...</p> : recipes.length === 0 ? <div style={empty}>belum ada recipe. buat recipe pertama di sebelah kiri.</div> : <div style={{ display: "grid", gap: 9, marginTop: 12 }}>{recipes.map((r) => { const product = products.find((p) => p.id === r.product_id); const cost = (r.recipe_items ?? []).reduce((s, item) => s + Number(item.quantity) * Number(item.ingredients?.current_cost ?? 0), 0) / Math.max(Number(r.yield_qty), 1); return <div key={r.id} style={{ padding: 12, borderRadius: 12, background: "#0e1013", border: "1px solid #292e34" }}><b>{r.name}</b><p style={{ ...muted, marginTop: 4 }}>{product?.name || "produk"} · HPP {rupiah(cost)}</p><div style={{ display: "flex", gap: 7, marginTop: 9 }}><button onClick={() => loadRecipe(r)} style={smallButton}>edit</button><button onClick={() => deleteRecipe(r)} style={smallButton}>hapus</button></div></div>; })}</div>}</section></aside></section></div></main>;
 }
 
 const header = { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, marginBottom: 24, flexWrap: "wrap" } as const;
-const goldLabel = { color: "#c5a66b", letterSpacing: 2, fontSize: 11 } as const;
-const card = { padding: 20, borderRadius: 18, background: "#14171b", border: "1px solid #292e34" } as const;
-const workspace = { display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(300px,380px)", gap: 18, alignItems: "start" } as const;
-const muted = { color: "#9299a3", fontSize: 13 } as const;
-const sectionHead = { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" } as const;
-const grid2 = { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 12, marginTop: 18 } as const;
-const lineGrid = { display: "grid", gridTemplateColumns: "minmax(0,1fr) 130px 140px 42px", gap: 8, alignItems: "center" } as const;
-const label = { display: "grid", gap: 7, color: "#c9cdd2", fontSize: 12 } as const;
-const input = { width: "100%", padding: "12px 13px", borderRadius: 10, border: "1px solid #353b43", background: "#0d0f12", color: "#f5f1e8", outline: "none" } as const;
-const button = { padding: "11px 14px", borderRadius: 10, border: "1px solid #353b43", background: "#15181c", color: "#f5f1e8", cursor: "pointer" } as const;
-const primary = { padding: "12px 16px", border: 0, borderRadius: 10, background: "#c5a66b", color: "#111", fontWeight: 700, cursor: "pointer" } as const;
-const smallPrimary = { ...primary, padding: "10px 13px" } as const;
-const smallButton = { padding: "8px 10px", borderRadius: 8, border: "1px solid #353b43", background: "#1b1f24", color: "#f5f1e8", cursor: "pointer" } as const;
-const notice = { padding: "11px 13px", borderRadius: 10, background: "#12151a", border: "1px solid #292e34", marginBottom: 14 } as const;
-const costBox = { padding: "11px 10px", borderRadius: 10, background: "#0d0f12", border: "1px solid #292e34", textAlign: "right", fontSize: 12 } as const;
-const metricRow = { display: "flex", justifyContent: "space-between", gap: 12, padding: "11px 0", borderBottom: "1px solid #24282e", color: "#9299a3", fontSize: 13 } as const;
-const empty = { padding: "18px 0", color: "#707782", lineHeight: 1.6 } as const;
+const goldLabel = { color: "#c5a66b", letterSpacing: 2, fontSize: 11 } as const; const card = { padding: 20, borderRadius: 18, background: "#14171b", border: "1px solid #292e34" } as const; const workspace = { display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(300px,380px)", gap: 18, alignItems: "start" } as const; const muted = { color: "#9299a3", fontSize: 13 } as const; const sectionHead = { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" } as const; const grid2 = { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 12, marginTop: 18 } as const; const lineGrid = { display: "grid", gridTemplateColumns: "minmax(0,1fr) 130px 140px 42px", gap: 8, alignItems: "center" } as const; const label = { display: "grid", gap: 7, color: "#c9cdd2", fontSize: 12 } as const; const input = { width: "100%", padding: "12px 13px", borderRadius: 10, border: "1px solid #353b43", background: "#0d0f12", color: "#f5f1e8", outline: "none" } as const; const button = { padding: "11px 14px", borderRadius: 10, border: "1px solid #353b43", background: "#15181c", color: "#f5f1e8", cursor: "pointer" } as const; const primary = { padding: "12px 16px", border: 0, borderRadius: 10, background: "#c5a66b", color: "#111", fontWeight: 700, cursor: "pointer" } as const; const smallPrimary = { ...primary, padding: "10px 13px" } as const; const smallButton = { padding: "8px 10px", borderRadius: 8, border: "1px solid #353b43", background: "#1b1f24", color: "#f5f1e8", cursor: "pointer" } as const; const notice = { padding: "11px 13px", borderRadius: 10, background: "#12151a", border: "1px solid #292e34", marginBottom: 14 } as const; const costBox = { padding: "11px 10px", borderRadius: 10, background: "#0d0f12", border: "1px solid #292e34", textAlign: "right", fontSize: 12 } as const; const metricRow = { display: "flex", justifyContent: "space-between", gap: 12, padding: "11px 0", borderBottom: "1px solid #24282e", color: "#9299a3", fontSize: 13 } as const; const empty = { padding: "18px 0", color: "#707782", lineHeight: 1.6 } as const;
