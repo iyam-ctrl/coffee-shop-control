@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 
-const supabase = createBrowserClient(
+const getSupabase = () => createBrowserClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
 );
@@ -28,6 +28,7 @@ export default function ShiftPage() {
   async function load(selectedStoreId?: string) {
     setError("");
     setLoading(true);
+    const supabase = getSupabase();
     const { data: claims } = await supabase.auth.getClaims();
     const uid = claims?.claims?.sub as string | undefined;
     if (!uid) { location.href = "/login"; return; }
@@ -66,13 +67,12 @@ export default function ShiftPage() {
     if (!storeId) return setError("pilih outlet");
     const amount = Number(opening);
     if (!Number.isFinite(amount) || amount < 0) return setError("modal awal harus 0 atau lebih");
-
+    const supabase = getSupabase();
     const { data: shiftId, error: rpcError } = await supabase.rpc("open_shift", {
       p_store_id: storeId,
       p_opening_cash: amount
     });
     if (rpcError) return setError(rpcError.message);
-
     setOpening("");
     setOk("shift berhasil dibuka");
     await load(storeId);
@@ -84,13 +84,12 @@ export default function ShiftPage() {
     if (!shift) return;
     const amount = Number(closing);
     if (!Number.isFinite(amount) || amount < 0) return setError("kas akhir harus 0 atau lebih");
-
+    const supabase = getSupabase();
     const { error: rpcError } = await supabase.rpc("close_shift", {
       p_shift_id: shift.id,
       p_closing_cash: amount
     });
     if (rpcError) return setError(rpcError.message);
-
     setClosing("");
     setOk("shift berhasil ditutup");
     await load(storeId);
