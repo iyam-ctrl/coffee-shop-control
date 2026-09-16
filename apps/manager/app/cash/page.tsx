@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 
-const supabase = createBrowserClient(
+const getSupabase = () => createBrowserClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
 );
@@ -29,6 +29,7 @@ export default function CashPage() {
   const [loading, setLoading] = useState(true);
 
   async function load(selected?: string) {
+    const supabase = getSupabase();
     setLoading(true); setError("");
     const { data: claims } = await supabase.auth.getClaims();
     const uid = claims?.claims?.sub as string | undefined;
@@ -75,6 +76,7 @@ export default function CashPage() {
   useEffect(() => { load(); }, []);
 
   async function deposit() {
+    const supabase = getSupabase();
     setError(""); setOk("");
     if (!storeId) return setError("pilih outlet");
     const value = Number(amount);
