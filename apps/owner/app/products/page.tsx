@@ -40,7 +40,15 @@ export default async function ProductsPage() {
     .eq("business_id", businessId)
     .order("name");
 
-  const productRows = (products ?? []) as Product[];
+  const productRows: Product[] = (products ?? []).map((product) => ({
+    id: product.id,
+    name: product.name,
+    sku: product.sku,
+    selling_price: Number(product.selling_price),
+    is_active: product.is_active,
+    category_id: product.category_id,
+    product_categories: product.product_categories as Product["product_categories"],
+  }));
 
   return (
     <main className="min-h-screen bg-slate-950 text-white">
