@@ -16,7 +16,7 @@ type Product = {
   selling_price: number;
   is_active: boolean;
   category_id: string | null;
-  product_categories?: { name: string } | null;
+  product_categories?: { name: string } | { name: string }[] | null;
 };
 
 const exampleProducts = [
@@ -31,6 +31,10 @@ const exampleProducts = [
 
 function rupiah(value: number) {
   return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(value);
+}
+
+function categoryName(category: Product["product_categories"]) {
+  return Array.isArray(category) ? category[0]?.name : category?.name;
 }
 
 export default function ProductsPage() {
@@ -79,7 +83,7 @@ export default function ProductsPage() {
     if (categoryResult.error) setError(categoryResult.error.message);
     else setCategories(categoryResult.data ?? []);
     if (productResult.error) setError(productResult.error.message);
-    else setProducts((productResult.data ?? []) as Product[]);
+    else setProducts((productResult.data ?? []) as unknown as Product[]);
     setLoading(false);
   }
 
@@ -90,7 +94,7 @@ export default function ProductsPage() {
     return products.filter((p) => {
       if (!showInactive && !p.is_active) return false;
       if (!q) return true;
-      return [p.name, p.sku ?? "", p.product_categories?.name ?? ""].some((v) => v.toLowerCase().includes(q));
+      return [p.name, p.sku ?? "", categoryName(p.product_categories) ?? ""].some((v) => v.toLowerCase().includes(q));
     });
   }, [products, search, showInactive]);
 
@@ -187,7 +191,7 @@ export default function ProductsPage() {
             <div style={sectionHead}><div><h2>daftar produk</h2><p style={muted}>{visibleProducts.length} produk ditampilkan</p></div><label style={{ display: "flex", alignItems: "center", gap: 8, color: "#9299a3", fontSize: 13 }}><input type="checkbox" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} /> tampilkan nonaktif</label></div>
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="cari nama, SKU, kategori..." style={input} />
             {loading ? <p style={{ color: "#9299a3", padding: 24 }}>memuat...</p> : visibleProducts.length === 0 ? <div style={{ padding: 30, textAlign: "center", color: "#707782" }}>belum ada produk. lu bisa pakai tombol <b>isi contoh produk</b> atau tambah produk manual.</div> : (
-              <div style={{ overflowX: "auto", marginTop: 12 }}><table style={{ width: "100%", borderCollapse: "collapse", minWidth: 650 }}><thead><tr>{["produk", "SKU", "kategori", "harga jual", "status", "aksi"].map((h) => <th key={h} style={th}>{h}</th>)}</tr></thead><tbody>{visibleProducts.map((p) => <tr key={p.id}><td style={td}><b>{p.name}</b></td><td style={td}>{p.sku || "—"}</td><td style={td}>{p.product_categories?.name || "Tanpa kategori"}</td><td style={td}>{rupiah(Number(p.selling_price))}</td><td style={td}><span style={{ ...badge, opacity: p.is_active ? 1 : 0.55 }}>{p.is_active ? "aktif" : "nonaktif"}</span></td><td style={td}><button onClick={() => toggleProduct(p)} style={smallButton}>{p.is_active ? "nonaktifkan" : "aktifkan"}</button></td></tr>)}</tbody></table></div>
+              <div style={{ overflowX: "auto", marginTop: 12 }}><table style={{ width: "100%", borderCollapse: "collapse", minWidth: 650 }}><thead><tr>{["produk", "SKU", "kategori", "harga jual", "status", "aksi"].map((h) => <th key={h} style={th}>{h}</th>)}</tr></thead><tbody>{visibleProducts.map((p) => <tr key={p.id}><td style={td}><b>{p.name}</b></td><td style={td}>{p.sku || "—"}</td><td style={td}>{categoryName(p.product_categories) || "Tanpa kategori"}</td><td style={td}>{rupiah(Number(p.selling_price))}</td><td style={td}><span style={{ ...badge, opacity: p.is_active ? 1 : 0.55 }}>{p.is_active ? "aktif" : "nonaktif"}</span></td><td style={td}><button onClick={() => toggleProduct(p)} style={smallButton}>{p.is_active ? "nonaktifkan" : "aktifkan"}</button></td></tr>)}</tbody></table></div>
             )}
           </section>
 
@@ -216,7 +220,7 @@ const input = { width: "100%", padding: "12px 13px", borderRadius: 10, border: "
 const primary = { padding: "12px 16px", border: 0, borderRadius: 10, background: "#c5a66b", color: "#111", fontWeight: 700, cursor: "pointer" } as const;
 const smallPrimary = { ...primary, padding: "11px 13px" } as const;
 const smallButton = { padding: "8px 10px", borderRadius: 8, border: "1px solid #353b43", background: "#1b1f24", color: "#f5f1e8", cursor: "pointer" } as const;
-const badge = { display: "inline-flex", padding: "6px 9px", borderRadius: 999, background: "#20252b", border: "1px solid #343a42", color: "#c8cdd4", fontSize: 12 } as const;
-const notice = { padding: "11px 13px", borderRadius: 10, background: "#15181c", border: "1px solid #292e34", marginBottom: 14 } as const;
-const th = { textAlign: "left" as const, color: "#707782", fontSize: 12, fontWeight: 600, padding: "12px 10px", borderBottom: "1px solid #292e34" };
-const td = { padding: "13px 10px", borderBottom: "1px solid #20242a", fontSize: 13, color: "#c8cdd4" };
+const notice = { padding: "12px 14px", borderRadius: 10, background: "#121519", border: "1px solid #292e34", marginBottom: 14 } as const;
+const th = { textAlign: "left", padding: "12px 10px", borderBottom: "1px solid #292e34", color: "#9299a3", fontSize: 12 } as const;
+const td = { padding: "13px 10px", borderBottom: "1px solid #20242a", fontSize: 13 } as const;
+const badge = { display: "inline-flex", padding: "5px 8px", borderRadius: 999, border: "1px solid #365b43", color: "#b9d8c1", fontSize: 11 } as const;
