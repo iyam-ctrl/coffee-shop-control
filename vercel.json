@@ -1,5 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "installCommand": "npm install --workspaces --include-workspace-root --no-audit --no-fund",
-  "buildCommand": "npm run build --workspaces --if-present"
+  "buildCommand": "npm --workspace=@coffee-shop/manager run build",
+  "outputDirectory": "apps/manager/.next"
 }
