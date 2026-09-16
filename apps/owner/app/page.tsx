@@ -20,6 +20,7 @@ export default async function OwnerDashboard() {
   const today = new Date();
   const startToday = new Date(today.getFullYear(), today.getMonth(), today.getDate()).toISOString();
   const startMonth = new Date(today.getFullYear(), today.getMonth(), 1).toISOString();
+  const startTomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1).toISOString();
 
   let omzet = 0;
   let hpp = 0;
@@ -29,8 +30,8 @@ export default async function OwnerDashboard() {
 
   if (storeIds.length) {
     const [{ data: sales }, { data: expenseRows }, { data: stockRows }, { data: wasteRows }] = await Promise.all([
-      supabase.from("sales").select("id,total,sold_at").in("store_id", storeIds).eq("status", "COMPLETED").gte("sold_at", startToday),
-      supabase.from("expenses").select("amount,spent_at").in("store_id", storeIds).gte("spent_at", startMonth),
+      supabase.from("sales").select("id,total,sold_at").in("store_id", storeIds).eq("status", "COMPLETED").gte("sold_at", startToday).lt("sold_at", startTomorrow),
+      supabase.from("expenses").select("amount,spent_at").in("store_id", storeIds).gte("spent_at", startToday).lt("spent_at", startTomorrow),
       supabase.from("inventory_balances").select("quantity,ingredient_id").in("store_id", storeIds),
       supabase.from("waste_records").select("quantity,ingredient_id,recorded_at").in("store_id", storeIds).gte("recorded_at", startMonth),
     ]);
@@ -61,8 +62,8 @@ export default async function OwnerDashboard() {
   const cards = [
     ["omzet", money(omzet), "hari ini"],
     ["HPP", money(hpp), "hari ini"],
-    ["gross profit", money(grossProfit), "omzet − HPP"],
-    ["net profit", money(netProfit), "gross profit − biaya bulan berjalan"],
+    ["gross profit", money(grossProfit), "omzet − HPP hari ini"],
+    ["net profit", money(netProfit), "gross profit − biaya hari ini"],
     ["nilai stok", money(stockValue), "estimasi dari current cost"],
     ["waste", money(waste), "bulan berjalan"],
   ];
