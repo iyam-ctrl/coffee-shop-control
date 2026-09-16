@@ -128,55 +128,30 @@ export default async function ManagerDashboard() {
             <p style={{ color: "#9299a3" }}>{business?.name ?? "toko"} · {String(managerMembership.role).toLowerCase()}</p>
           </div>
           <div style={{ display: "flex", gap: 10 }}>
-            <button onClick={() => {}} style={{ padding: "11px 16px", borderRadius: 10, border: "1px solid #353b43", background: "#15181c", color: "#f5f1e8" }}>operasional</button>
+            <a href="/sales" style={topLink}>penjualan</a>
             <form action="/auth/signout" method="post">
-              <button style={{ padding: "11px 16px", borderRadius: 10, border: "1px solid #353b43", background: "#15181c", color: "#f5f1e8" }}>keluar</button>
+              <button style={topLink}>keluar</button>
             </form>
           </div>
         </div>
 
         <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(210px,1fr))", gap: 16 }}>
-          <article style={card}>
-            <p style={label}>penjualan hari ini</p>
-            <h2 style={value}>{money(salesToday)}</h2>
-            <p style={note}>transaksi selesai hari ini</p>
-          </article>
-          <article style={card}>
-            <p style={label}>cash hari ini</p>
-            <h2 style={value}>{money(cashToday)}</h2>
-            <p style={note}>pembayaran metode cash</p>
-          </article>
-          <article style={card}>
-            <p style={label}>setoran hari ini</p>
-            <h2 style={value}>{money(depositsToday)}</h2>
-            <p style={note}>cash yang sudah disetor</p>
-          </article>
-          <article style={card}>
-            <p style={label}>cash belum disetor</p>
-            <h2 style={value}>{money(Math.max(0, expectedCash))}</h2>
-            <p style={note}>cash − setoran hari ini</p>
-          </article>
-          <article style={card}>
-            <p style={label}>stok kritis</p>
-            <h2 style={value}>{lowStock} item</h2>
-            <p style={note}>menyentuh batas minimum</p>
-          </article>
-          <article style={card}>
-            <p style={label}>shift aktif</p>
-            <h2 style={value}>{activeShiftCount} shift</h2>
-            <p style={note}>{stores?.length ?? 0} outlet aktif</p>
-          </article>
+          <article style={card}><p style={label}>penjualan hari ini</p><h2 style={value}>{money(salesToday)}</h2><p style={note}>transaksi selesai hari ini</p></article>
+          <article style={card}><p style={label}>cash hari ini</p><h2 style={value}>{money(cashToday)}</h2><p style={note}>pembayaran metode cash</p></article>
+          <article style={card}><p style={label}>setoran hari ini</p><h2 style={value}>{money(depositsToday)}</h2><p style={note}>cash yang sudah disetor</p></article>
+          <article style={card}><p style={label}>cash belum disetor</p><h2 style={value}>{money(Math.max(0, expectedCash))}</h2><p style={note}>cash − setoran hari ini</p></article>
+          <article style={card}><p style={label}>stok kritis</p><h2 style={value}>{lowStock} item</h2><p style={note}>menyentuh batas minimum</p></article>
+          <article style={card}><p style={label}>shift aktif</p><h2 style={value}>{activeShiftCount} shift</h2><p style={note}>{stores?.length ?? 0} outlet aktif</p></article>
         </section>
 
         <section style={{ marginTop: 22, padding: 24, borderRadius: 18, background: "#15181c", border: "1px solid #292e34" }}>
           <h2 style={{ marginBottom: 8 }}>operasional</h2>
           <p style={{ color: "#9299a3", lineHeight: 1.6 }}>
-            gunakan modul penjualan, shift, stok, penerimaan barang, waste, stock opname, dan setoran untuk menjaga seluruh aktivitas outlet tercatat dalam satu alur data.
+            gunakan modul penjualan, shift, kas & setoran untuk menjaga seluruh aktivitas outlet tercatat dalam satu alur data.
           </p>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 18 }}>
             <a href="/sales" style={link}>penjualan</a>
             <a href="/shift" style={link}>shift</a>
-            <a href="/inventory" style={link}>stok</a>
             <a href="/cash" style={link}>kas & setoran</a>
           </div>
         </section>
@@ -189,4 +164,5 @@ const card = { padding: 22, borderRadius: 18, background: "#15181c", border: "1p
 const label = { color: "#9299a3", fontSize: 13 } as const;
 const value = { fontSize: 25, margin: "10px 0 6px" } as const;
 const note = { color: "#707782", fontSize: 13 } as const;
+const topLink = { padding: "11px 16px", borderRadius: 10, border: "1px solid #353b43", background: "#15181c", color: "#f5f1e8", textDecoration: "none", cursor: "pointer" } as const;
 const link = { padding: "10px 14px", borderRadius: 10, border: "1px solid #353b43", color: "#f5f1e8", textDecoration: "none", background: "#0e1013", fontSize: 13 } as const;
