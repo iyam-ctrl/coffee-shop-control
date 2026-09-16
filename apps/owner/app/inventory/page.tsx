@@ -6,7 +6,7 @@ import { createBrowserClient } from "@supabase/ssr";
 const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!);
 
 type Store = { id: string; name: string };
-type Ingredient = { id: string; name: string; unit_id: string; current_cost: number; minimum_stock: number; is_active: boolean; units?: { name: string; symbol: string } | null };
+type Ingredient = { id: string; name: string; unit_id: string; current_cost: number; minimum_stock: number; is_active: boolean; units?: any };
 type Balance = { ingredient_id: string; quantity: number };
 type Movement = { id: string; ingredient_id: string; movement_type: string; quantity: number; unit_cost: number; note: string | null; created_at: string; ingredients?: { name: string; units?: { symbol: string } | null } | null };
 
