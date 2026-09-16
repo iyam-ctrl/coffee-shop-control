@@ -1,12 +1,12 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
-const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!);
 const money = (n: number) => new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(n);
 type Store = { id: string; name: string };
 export default function Reports() {
   const [stores, setStores] = useState<Store[]>([]), [sid, setSid] = useState(""), [sales, setSales] = useState<any[]>([]), [items, setItems] = useState<any[]>([]), [expenses, setExpenses] = useState<any[]>([]), [waste, setWaste] = useState<any[]>([]), [days, setDays] = useState(30), [loading, setLoading] = useState(true);
   async function load(selectedStore?: string) {
+    const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!);
     setLoading(true); const { data: c } = await supabase.auth.getClaims(); const uid = c?.claims?.sub as string | undefined; if (!uid) { location.href = "/login"; return; }
     const { data: m } = await supabase.from("business_members").select("business_id,role").eq("user_id", uid).eq("is_active", true); const o = m?.find(x => String(x.role).toUpperCase() === "OWNER"); if (!o) { setLoading(false); return; }
     const { data: s } = await supabase.from("stores").select("id,name").eq("business_id", o.business_id).eq("is_active", true).order("name"); setStores(s || []); const id = selectedStore || sid || s?.[0]?.id || ""; setSid(id);
