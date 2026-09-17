@@ -18,7 +18,7 @@ export default async function ManagerDashboard() {
   const today = new Date();
   const start = new Date(today.getFullYear(), today.getMonth(), today.getDate()).toISOString();
   const end = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1).toISOString();
-  let salesToday = 0, cashToday = 0, depositsToday = 0, activeShiftCount = 0;
+  let salesToday = 0, cashToday = 0, depositsToday = 0, activeShiftCount = 0, lowStockCount = 0;
   let recentSales: { id: string; transaction_no: string; total: number; sold_at: string }[] = [];
   let lowStockItems: { name: string; quantity: number; minimum: number }[] = [];
   if (storeIds.length) {
@@ -42,7 +42,9 @@ export default async function ManagerDashboard() {
     const { data: balances } = await supabase.from("inventory_balances").select("ingredient_id,quantity").in("ingredient_id", ingredients.map((item) => item.id)).in("store_id", storeIds);
     const qty = new Map<string, number>();
     for (const row of balances ?? []) qty.set(row.ingredient_id, (qty.get(row.ingredient_id) ?? 0) + Number(row.quantity ?? 0));
-    lowStockItems = ingredients.filter((item) => (qty.get(item.id) ?? 0) <= Number(item.minimum_stock ?? 0)).map((item) => ({ name: item.name, quantity: qty.get(item.id) ?? 0, minimum: Number(item.minimum_stock ?? 0) })).slice(0, 6);
+    const critical = ingredients.filter((item) => (qty.get(item.id) ?? 0) <= Number(item.minimum_stock ?? 0));
+    lowStockCount = critical.length;
+    lowStockItems = critical.map((item) => ({ name: item.name, quantity: qty.get(item.id) ?? 0, minimum: Number(item.minimum_stock ?? 0) })).slice(0, 6);
   }
 
   const cards = [
@@ -50,7 +52,7 @@ export default async function ManagerDashboard() {
     ["cash hari ini", money(cashToday), "pembayaran metode cash"],
     ["setoran hari ini", money(depositsToday), "cash yang sudah disetor"],
     ["cash belum disetor", money(Math.max(0, cashToday - depositsToday)), "indikator rekonsiliasi"],
-    ["stok kritis", `${lowStockItems.length} item`, "menyentuh batas minimum"],
+    ["stok kritis", `${lowStockCount} item`, "menyentuh batas minimum"],
     ["shift aktif", `${activeShiftCount} shift`, `${stores?.length ?? 0} outlet aktif`],
   ];
   const modules = [
@@ -63,9 +65,9 @@ export default async function ManagerDashboard() {
     <section className="kpi-grid manager-kpis" style={{ marginTop: 14 }}>{cards.map(([label, value, note]) => <article className="kpi-card" key={label}><span className="kpi-label">{label}</span><strong>{value}</strong><small>{note}</small></article>)}</section>
     <section className="ops-grid">
       <article className="data-panel"><div className="panel-head"><h3>transaksi terbaru</h3><span>{recentSales.length} transaksi</span></div><div className="table-list">{recentSales.length ? recentSales.map((row) => <div className="table-row" key={row.id}><b>{row.transaction_no}</b><span>{new Date(row.sold_at).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}</span><span>{money(row.total)}</span></div>) : <p className="muted">belum ada transaksi hari ini.</p>}</div></article>
-      <article className="data-panel"><div className="panel-head"><h3>stok kritis</h3><span>{lowStockItems.length} item</span></div><div className="table-list">{lowStockItems.length ? lowStockItems.map((item) => <div className="table-row" key={item.name}><b>{item.name}</b><span>{item.quantity}</span><span className="status-pill warning">min {item.minimum}</span></div>) : <p className="muted">semua bahan di atas minimum stock.</p>}</div></article>
+      <article className="data-panel"><div className="panel-head"><h3>stok kritis</h3><span>{lowStockCount} item</span></div><div className="table-list">{lowStockItems.length ? lowStockItems.map((item) => <div className="table-row" key={item.name}><b>{item.name}</b><span>{item.quantity}</span><span className="status-pill warning">min {item.minimum}</span></div>) : <p className="muted">semua bahan di atas minimum stock.</p>}</div></article>
     </section>
-    <section className="ops-alert"><div><b>perhatian operasional</b><p>{lowStockItems.length ? `${lowStockItems.length} bahan perlu dipantau atau direstock.` : "tidak ada peringatan minimum stock dari data saat ini."}</p></div><a href="/cash">buka rekonsiliasi →</a></section>
+    <section className="ops-alert"><div><b>perhatian operasional</b><p>{lowStockCount ? `${lowStockCount} bahan perlu dipantau atau direstock.` : "tidak ada peringatan minimum stock dari data saat ini."}</p></div><a href="/cash">buka rekonsiliasi →</a></section>
     <section className="page-section"><p className="brand-kicker">OPERATIONS</p><h2>pusat kerja manager</h2><p className="muted">fungsi kasir/POS dipisahkan ke aplikasi kasir agar kontrol operasional tetap rapi.</p><div className="feature-grid">{modules.map(([title, description, href], i) => <a className="feature-card ops-card" href={href} key={href}><span className="module-number">0{i + 1}</span><p className="brand-kicker">MODULE</p><h3>{title} →</h3><p>{description}</p></a>)}</div></section>
   </main>;
 }
