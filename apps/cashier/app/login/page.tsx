@@ -1,0 +1,10 @@
+"use client";
+
+import { FormEvent, useState } from "react";
+import { createClient } from "../../lib/supabase/client";
+
+export default function CashierLoginPage() {
+  const [email,setEmail]=useState(""); const [password,setPassword]=useState(""); const [error,setError]=useState(""); const [loading,setLoading]=useState(false);
+  async function submit(e:FormEvent<HTMLFormElement>){e.preventDefault();setLoading(true);setError("");const supabase=createClient();const {data,error}=await supabase.auth.signInWithPassword({email:email.trim(),password});if(error||!data.user){setError(error?.message??"email atau password salah.");setLoading(false);return}const {data:members}=await supabase.from("business_members").select("role").eq("user_id",data.user.id).eq("is_active",true);const allowed=(members??[]).some((m)=>["OWNER","MANAGER","STAFF"].includes(String(m.role).toUpperCase()));if(!allowed){await supabase.auth.signOut();setError("akun belum memiliki akses cashier.");setLoading(false);return}window.location.href="/"}
+  return <main style={{minHeight:"100vh",display:"grid",placeItems:"center",padding:20,background:"#f4f7fb"}}><form onSubmit={submit} style={{width:"100%",maxWidth:430,padding:30,borderRadius:20,background:"#fff",border:"1px solid #e4e9f0",boxShadow:"0 18px 50px rgba(23,32,51,.08)"}}><p className="brand-kicker">COFFEE SHOP CONTROL</p><h1 style={{margin:"6px 0",fontSize:30}}>cashier login</h1><p style={{color:"#6b7485",marginBottom:26}}>masuk untuk menjalankan transaksi outlet.</p><label style={{display:"block",marginBottom:15}}>email<input className="input" value={email} onChange={(e)=>setEmail(e.target.value)} type="email" required autoComplete="email" style={{marginTop:7}}/></label><label style={{display:"block",marginBottom:18}}>password<input className="input" value={password} onChange={(e)=>setPassword(e.target.value)} type="password" required autoComplete="current-password" style={{marginTop:7}}/></label>{error&&<p className="error" style={{marginBottom:15}}>{error}</p>}<button className="primary" disabled={loading}>{loading?"memproses...":"masuk ke kasir"}</button></form></main>
+}
