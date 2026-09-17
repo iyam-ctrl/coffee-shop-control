@@ -9,7 +9,7 @@ export type AppShellProps = { appName: string; appLabel: string; navItems: AppNa
 export function AppShell({ appName, appLabel, navItems, children }: AppShellProps) {
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
-  const authPage = ['/login', '/register', '/setup'].some((path) => pathname === path || pathname.startsWith(`${path}/`))
+  const authPage = ['/login', '/register'].some((path) => pathname === path || pathname.startsWith(`${path}/`))
   useEffect(() => setOpen(false), [pathname])
   if (authPage) return <>{children}</>
   return <div className="app-shell">
