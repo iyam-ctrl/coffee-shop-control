@@ -44,69 +44,19 @@ export default function RegisterPage() {
     }
 
     if (!data.session) {
-      setSuccess("akun berhasil dibuat. cek email untuk verifikasi, lalu login kembali untuk menyelesaikan setup.");
+      setSuccess("akun berhasil dibuat. cek email untuk verifikasi, lalu login kembali.");
       setLoading(false);
       return;
     }
 
-    const { error: profileError } = await supabase.from("user_profiles").upsert({
-      id: data.user.id,
-      full_name: fullName.trim(),
-    });
-    if (profileError) {
-      setError("akun dibuat, tetapi profil belum tersimpan. coba login kembali.");
-      setLoading(false);
-      return;
-    }
-
-    const { data: business, error: businessError } = await supabase
-      .from("businesses")
-      .insert({ name: businessName.trim(), owner_user_id: data.user.id })
-      .select("id")
-      .single();
-
-    if (businessError || !business) {
-      setError("akun berhasil dibuat, tetapi bisnis belum bisa dibuat. coba login kembali.");
-      setLoading(false);
-      return;
-    }
-
-    const { data: store, error: storeError } = await supabase
-      .from("stores")
-      .insert({
-        business_id: business.id,
-        name: storeName.trim(),
-        code: "MAIN",
-      })
-      .select("id")
-      .single();
-
-    if (storeError || !store) {
-      setError("bisnis berhasil dibuat, tetapi outlet belum bisa dibuat. coba login kembali.");
-      setLoading(false);
-      return;
-    }
-
-    const { error: memberError } = await supabase.from("business_members").insert({
-      business_id: business.id,
-      user_id: data.user.id,
-      role: "MANAGER",
-      is_active: true,
+    const { error: bootstrapError } = await supabase.rpc("bootstrap_manager_account", {
+      p_full_name: fullName.trim(),
+      p_business_name: businessName.trim(),
+      p_store_name: storeName.trim(),
     });
 
-    if (memberError) {
-      setError("akun dan bisnis berhasil dibuat, tetapi role manager belum tersimpan. coba login kembali.");
-      setLoading(false);
-      return;
-    }
-
-    const { error: storeMemberError } = await supabase.from("store_members").insert({
-      store_id: store.id,
-      user_id: data.user.id,
-    });
-
-    if (storeMemberError) {
-      setError("akun berhasil dibuat, tetapi akses outlet belum tersimpan. coba login kembali.");
+    if (bootstrapError) {
+      setError("akun berhasil dibuat, tetapi setup bisnis gagal. coba login kembali.");
       setLoading(false);
       return;
     }
@@ -120,17 +70,14 @@ export default function RegisterPage() {
         <p style={{ color: "#b99a62", letterSpacing: 2, fontSize: 12 }}>COFFEE SHOP CONTROL</p>
         <h1 style={{ margin: "8px 0" }}>daftar akun manager</h1>
         <p style={{ color: "#9299a3", marginBottom: 24 }}>buat akun dan outlet pertama untuk sistem operasional toko.</p>
-
         <Field label="nama lengkap" value={fullName} onChange={setFullName} required />
         <Field label="nama bisnis" value={businessName} onChange={setBusinessName} required />
         <Field label="nama outlet" value={storeName} onChange={setStoreName} required />
         <Field label="email" value={email} onChange={setEmail} type="email" autoComplete="email" required />
         <Field label="password" value={password} onChange={setPassword} type="password" autoComplete="new-password" required />
         <Field label="konfirmasi password" value={confirmPassword} onChange={setConfirmPassword} type="password" autoComplete="new-password" required />
-
         {error && <p style={{ color: "#ff7d7d", marginBottom: 16, lineHeight: 1.5 }}>{error}</p>}
         {success && <p style={{ color: "#a8d5a2", marginBottom: 16, lineHeight: 1.5 }}>{success}</p>}
-
         <button disabled={loading} style={{ width: "100%", padding: 14, border: 0, borderRadius: 12, background: "#b99a62", color: "#111", fontWeight: 700, cursor: "pointer" }}>
           {loading ? "membuat akun..." : "daftar akun"}
         </button>
