@@ -3,6 +3,8 @@ import { createClient } from "./lib/supabase/server";
 
 const money = (n: number) => new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(n);
 
+type IngredientRow = { id: string; name: string; minimum_stock: number | null };
+
 export default async function ManagerDashboard() {
   const supabase = await createClient();
   const { data: claimsData } = await supabase.auth.getClaims();
@@ -37,8 +39,9 @@ export default async function ManagerDashboard() {
     depositsToday = (deposits ?? []).reduce((sum, row) => sum + Number(row.amount ?? 0), 0);
     activeShiftCount = shiftCount ?? 0;
   }
-  const { data: ingredients } = await supabase.from("ingredients").select("id,name,minimum_stock").eq("business_id", membership.business_id).eq("is_active", true).order("name");
-  if ((ingredients ?? []).length && storeIds.length) {
+  const { data: ingredientsData } = await supabase.from("ingredients").select("id,name,minimum_stock").eq("business_id", membership.business_id).eq("is_active", true).order("name");
+  const ingredients: IngredientRow[] = (ingredientsData ?? []) as IngredientRow[];
+  if (ingredients.length && storeIds.length) {
     const { data: balances } = await supabase.from("inventory_balances").select("ingredient_id,quantity").in("ingredient_id", ingredients.map((item) => item.id)).in("store_id", storeIds);
     const qty = new Map<string, number>();
     for (const row of balances ?? []) qty.set(row.ingredient_id, (qty.get(row.ingredient_id) ?? 0) + Number(row.quantity ?? 0));
