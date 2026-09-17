@@ -5,13 +5,14 @@ import './globals.css'
 export const metadata: Metadata = { title: 'Coffee Shop Control — Owner', description: 'Kontrol bisnis coffee shop untuk owner.' }
 const navItems = [
   { label: 'Dashboard', href: '/', description: 'overview semua outlet' },
+  { label: 'Sales Control', href: '/sales', description: 'monitor transaksi' },
   { label: 'Produk & Menu', href: '/products', description: 'harga & katalog' },
+  { label: 'Laporan', href: '/reports', description: 'profit & kontrol' },
   { label: 'Ingredients', href: '/ingredients', description: 'cost bahan' },
   { label: 'Recipes', href: '/recipes', description: 'HPP & margin' },
   { label: 'Inventory', href: '/inventory', description: 'stok & pergerakan' },
   { label: 'Stock Opname', href: '/stock-opname', description: 'variance stok' },
   { label: 'Pengeluaran', href: '/expenses', description: 'biaya operasional' },
-  { label: 'Sales Control', href: '/sales', description: 'monitor transaksi' },
-  { label: 'Laporan', href: '/reports', description: 'profit & kontrol' },
+  { label: 'Outlet & Bisnis', href: '/setup', description: 'informasi outlet' },
 ]
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) { return <html lang="id"><body><AppShell appName="owner workspace" appLabel="OWNER" navItems={navItems}>{children}</AppShell></body></html> }
