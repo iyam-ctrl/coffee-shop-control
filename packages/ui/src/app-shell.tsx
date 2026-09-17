@@ -10,6 +10,7 @@ export function AppShell({ appName, appLabel, navItems, children }: AppShellProp
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
   const authPage = ['/login', '/register'].some((path) => pathname === path || pathname.startsWith(`${path}/`))
+  const mobileItems = navItems.slice(0, 4)
 
   useEffect(() => setOpen(false), [pathname])
   if (authPage) return <>{children}</>
@@ -17,16 +18,16 @@ export function AppShell({ appName, appLabel, navItems, children }: AppShellProp
   return (
     <div className="app-shell">
       <header className="mobile-topbar">
-        <button className="menu-button" type="button" onClick={() => setOpen((v) => !v)} aria-label="buka menu">
+        <button className="menu-button" type="button" onClick={() => setOpen((v) => !v)} aria-label="buka menu" aria-expanded={open}>
           <span /><span /><span />
         </button>
         <div className="mobile-brand"><p className="brand-kicker">COFFEE SHOP CONTROL</p><strong>{appLabel}</strong></div>
-        <a className="mobile-logout" href="/auth/signout">keluar</a>
+        <span className="mobile-online" aria-label="sistem online" />
       </header>
 
       <aside className={`sidebar ${open ? 'sidebar-open' : ''}`}>
         <div className="sidebar-brand">
-          <div className="brand-mark">CSC</div>
+          <div className="brand-mark">☕</div>
           <div><p className="brand-kicker">COFFEE SHOP</p><strong>CONTROL</strong></div>
         </div>
         <div className="app-badge"><span>{appLabel} WORKSPACE</span><small>{appName}</small></div>
@@ -43,9 +44,15 @@ export function AppShell({ appName, appLabel, navItems, children }: AppShellProp
       </aside>
       {open && <button className="drawer-backdrop" type="button" aria-label="tutup menu" onClick={() => setOpen(false)} />}
       <main className="app-content">
-        <div className="content-head"><div><p className="brand-kicker">{appLabel} WORKSPACE</p><h1>{appName}</h1></div><div className="desktop-actions"><a className="header-action" href="/settings">pengaturan</a><a className="header-action header-action-primary" href="/auth/signout">keluar</a></div></div>
+        <div className="content-head"><div><p className="brand-kicker">{appLabel} WORKSPACE</p><h1>{appName}</h1></div><div className="desktop-actions"><span className="system-status"><i /> sistem online</span><a className="header-action" href="/settings">pengaturan</a><a className="header-action header-action-primary" href="/auth/signout">keluar</a></div></div>
         {children}
       </main>
+      <nav className="mobile-bottom-nav" aria-label="navigasi cepat">
+        {mobileItems.map((item) => {
+          const active = pathname === item.href || (item.href !== '/' && pathname.startsWith(`${item.href}/`))
+          return <a key={item.href} href={item.href} className={active ? 'mobile-nav-active' : ''}><span className="mobile-nav-icon" />{item.label}</a>
+        })}
+      </nav>
     </div>
   )
 }
