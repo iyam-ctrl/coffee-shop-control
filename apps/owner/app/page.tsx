@@ -30,16 +30,17 @@ export default async function OwnerDashboard() {
 
   if (storeIds.length) {
     const [{ data: todaySales }, { data: expenseRows }, { data: stockRows }, { data: wasteRows }, { data: weekSales }] = await Promise.all([
-      supabase.from("sales").select("id,transaction_no,total,sold_at,store_id").in("store_id", storeIds).eq("status", "COMPLETED").gte("sold_at", startToday).lt("sold_at", startTomorrow),
+      supabase.from("sales").select("id,transaction_no,total,sold_at,store_id").in("store_id", storeIds).eq("status", "COMPLETED").gte("sold_at", startToday).lt("sold_at", startTomorrow).order("sold_at", { ascending: false }),
       supabase.from("expenses").select("amount").in("store_id", storeIds).gte("spent_at", startToday).lt("spent_at", startTomorrow),
       supabase.from("inventory_balances").select("quantity,ingredient_id").in("store_id", storeIds),
       supabase.from("waste_records").select("quantity,ingredient_id").in("store_id", storeIds).gte("recorded_at", startMonth),
       supabase.from("sales").select("id,total,sold_at").in("store_id", storeIds).eq("status", "COMPLETED").gte("sold_at", start7).lt("sold_at", startTomorrow),
     ]);
-    recentSales = (todaySales ?? []).map((x) => ({ ...x, total: Number(x.total ?? 0) })).sort((a, b) => +new Date(b.sold_at) - +new Date(a.sold_at)).slice(0, 6);
-    omzet = recentSales.reduce((sum, row) => sum + row.total, 0);
+    const allTodaySales = (todaySales ?? []).map((x) => ({ ...x, total: Number(x.total ?? 0) }));
+    recentSales = allTodaySales.slice(0, 6);
+    omzet = allTodaySales.reduce((sum, row) => sum + row.total, 0);
     expenses = (expenseRows ?? []).reduce((sum, row) => sum + Number(row.amount ?? 0), 0);
-    const saleIds = (todaySales ?? []).map((x) => x.id);
+    const saleIds = allTodaySales.map((x) => x.id);
     if (saleIds.length) {
       const { data: saleItems } = await supabase.from("sale_items").select("product_id,quantity,hpp_total,line_total").in("sale_id", saleIds);
       hpp = (saleItems ?? []).reduce((sum, row) => sum + Number(row.hpp_total ?? 0), 0);
