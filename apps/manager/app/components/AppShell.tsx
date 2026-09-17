@@ -1,0 +1,6 @@
+"use client";
+import { usePathname } from "next/navigation";
+import { useState } from "react";
+const items = [["Dashboard","/"],["Outlet & Tim","/setup"],["Shift","/shift"],["Kas & Setoran","/cash"]];
+const ops = [["Produk & Menu","/products"],["Bahan & HPP","/ingredients"],["Inventory","/inventory"],["Stock Opname","/stock-opname"],["Pengeluaran","/expenses"]];
+export default function AppShell({children}:{children:React.ReactNode}){const path=usePathname();const[open,setOpen]=useState(false);if(["/login","/register","/not-authorized"].includes(path))return <>{children}</>;const nav=[...items,...ops];return <div className="app-shell"><button className="mobile-menu" onClick={()=>setOpen(!open)} aria-label="buka menu">☰</button><aside className={open?"sidebar open":"sidebar"}><div className="brand"><span className="brand-mark">CC</span><div><b>coffee control</b><small>manager console</small></div></div><nav>{nav.map(([label,href])=><a key={href} className={path===href?"active":""} href={href} onClick={()=>setOpen(false)}>{label}</a>)}</nav><div className="sidebar-bottom"><a href="/settings" onClick={()=>setOpen(false)}>⚙ Pengaturan</a><a href="/auth/signout">↪ Keluar</a></div></aside><main className="shell-content">{children}</main></div>}
