@@ -8,8 +8,8 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@coffee-shop/auth": "*",
-    "@coffee-shop/ui": "*",
+    "@coffee-shop/auth": "workspace:*",
+    "@coffee-shop/ui": "workspace:*",
     "@supabase/ssr": "0.7.0",
     "@supabase/supabase-js": "2.57.4",
     "next": "15.5.24",
