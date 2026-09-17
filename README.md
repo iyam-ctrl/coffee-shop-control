@@ -1,13 +1,14 @@
 # COFFEE SHOP CONTROL
 
-sistem kontrol operasional coffee shop dengan dua aplikasi yang memakai satu backend dan satu sumber data.
+sistem kontrol operasional coffee shop dengan tiga aplikasi yang memakai satu backend dan satu sumber data.
 
 ## arsitektur
 
 ```text
 COFFEE SHOP CONTROL
-├── Manager App
 ├── Owner App
+├── Manager App
+├── Cashier App
 └── Shared Backend / Supabase
     └── PostgreSQL + Auth + RLS
 ```
@@ -18,12 +19,15 @@ bukan cuma mengetahui berapa yang terjual, tetapi membantu owner melihat hubunga
 
 ## apps
 
-- `apps/manager` — operasional toko sehari-hari: penjualan, shift, kas & setoran.
-- `apps/owner` — kontrol bisnis, inventory, laporan, HPP, profit, dan monitoring.
+- `apps/owner` — kontrol bisnis: dashboard, produk, ingredients, recipes, inventory, stock opname, pengeluaran, sales control, dan laporan.
+- `apps/manager` — operasional toko sehari-hari: outlet, shift, kas, setoran, dan rekonsiliasi.
+- `apps/cashier` — POS transaksi: pilih produk, keranjang, pembayaran, kembalian, dan riwayat transaksi.
+
+ketiga aplikasi menggunakan database Supabase yang sama sehingga transaksi kasir menjadi sumber data operasional manager dan laporan owner.
 
 ## shared packages
 
-- `packages/ui` — komponen UI bersama.
+- `packages/ui` — komponen shell dan navigasi UI bersama.
 - `packages/auth` — autentikasi dan session.
 - `packages/database` — Supabase client dan database types.
 - `packages/business` — business rules.
@@ -38,22 +42,33 @@ database foundation: migration `20260916155409_initial_schema_v0_1`.
 core database flow:
 
 ```text
-sale
+kasir
   ↓
-recipe
+record_sale RPC
   ↓
-HPP snapshot + inventory consumption
+sale + sale_items + payment
   ↓
-cash/payment
+recipe → HPP snapshot + inventory consumption
   ↓
-deposit + shift reconciliation
+shift / cash deposit / reconciliation
+  ↓
+manager monitoring
   ↓
 owner reporting
 ```
 
+## responsive UI
+
+seluruh workspace memakai pola responsive yang sama:
+
+- desktop: sidebar + dashboard workspace.
+- tablet: layout workspace yang menyempit tanpa menghilangkan fungsi utama.
+- mobile: topbar, drawer menu, dan bottom navigation untuk akses cepat.
+- visual: light professional UI dengan navy/blue/teal, tanpa gold sebagai warna utama.
+
 ## environment
 
-manager dan owner membutuhkan:
+aplikasi membutuhkan:
 
 ```env
 NEXT_PUBLIC_SUPABASE_URL=...
@@ -64,7 +79,7 @@ jangan menaruh `service_role` atau secret key di browser/client app.
 
 ## local development
 
-prasyarat: Node.js 20 dan pnpm 10.15.0.
+prasyarat: Node.js 22 dan pnpm 10.15.1.
 
 ```bash
 pnpm install
@@ -79,6 +94,12 @@ pnpm dev:owner
 
 owner berjalan di port `3001`.
 
+```bash
+pnpm dev:cashier
+```
+
+cashier berjalan di port `3002`.
+
 build semua workspace:
 
 ```bash
@@ -91,20 +112,6 @@ semua tabel bisnis utama memakai RLS. client role hanya menerima grant yang dibu
 
 ## status
 
-v0.1 operational foundation:
+operational foundation sudah mencakup auth, role routing, multi-outlet foundation, dashboard owner berbasis data nyata, HPP snapshot, inventory receipt/waste, stock opname, POS cashier, shift, cash deposit, reconciliation, dan monitoring manager.
 
-- auth dan role routing
-- multi-outlet foundation
-- owner dashboard berbasis data nyata
-- HPP snapshot pada transaksi
-- inventory receipt dan waste
-- stock opname + finalisasi
-- manager sales
-- shift open/close
-- cash deposit + reconciliation
-- manager operational dashboard
-- owner business reports
-- least-privilege client grants
-- GitHub Actions build verification
-
-fitur berikutnya bisa ditambahkan setelah build dan alur utama tervalidasi di environment deployment.
+UI sekarang diarahkan ke satu design system profesional yang konsisten untuk desktop, tablet, dan mobile tanpa mengganti database atau memulai ulang project.
