@@ -2,7 +2,10 @@
   "name": "@coffee-shop/ui",
   "private": true,
   "version": "0.1.0",
+  "main": "./src/index.tsx",
+  "types": "./src/index.tsx",
   "dependencies": {
+    "next": "15.5.24",
     "react": "19.1.1",
     "react-dom": "19.1.1"
   }
