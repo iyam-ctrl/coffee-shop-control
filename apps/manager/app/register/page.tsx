@@ -19,6 +19,11 @@ export default function RegisterPage() {
     setError("");
     setSuccess("");
 
+    const cleanFullName = fullName.trim();
+    const cleanBusinessName = businessName.trim();
+    const cleanStoreName = storeName.trim();
+    const cleanEmail = email.trim();
+
     if (password.length < 8) {
       setError("password minimal 8 karakter.");
       return;
@@ -32,9 +37,15 @@ export default function RegisterPage() {
     const supabase = createClient();
 
     const { data, error: signUpError } = await supabase.auth.signUp({
-      email: email.trim(),
+      email: cleanEmail,
       password,
-      options: { data: { full_name: fullName.trim() } },
+      options: {
+        data: {
+          full_name: cleanFullName,
+          business_name: cleanBusinessName,
+          store_name: cleanStoreName,
+        },
+      },
     });
 
     if (signUpError || !data.user) {
@@ -44,15 +55,15 @@ export default function RegisterPage() {
     }
 
     if (!data.session) {
-      setSuccess("akun berhasil dibuat. cek email untuk verifikasi, lalu login kembali.");
+      setSuccess("akun berhasil dibuat. cek email untuk verifikasi, lalu login kembali agar setup bisnis otomatis selesai.");
       setLoading(false);
       return;
     }
 
     const { error: bootstrapError } = await supabase.rpc("bootstrap_manager_account", {
-      p_full_name: fullName.trim(),
-      p_business_name: businessName.trim(),
-      p_store_name: storeName.trim(),
+      p_full_name: cleanFullName,
+      p_business_name: cleanBusinessName,
+      p_store_name: cleanStoreName,
     });
 
     if (bootstrapError) {
